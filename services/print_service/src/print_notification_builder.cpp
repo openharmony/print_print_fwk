@@ -180,6 +180,25 @@ std::shared_ptr<Notification::NotificationActionButton> PrintNotificationBuilder
     return actionButton;
 }
 
+std::string PrintNotificationBuilder::GetFaultKey(uint32_t subState)
+{
+    static const std::map<uint32_t, std::string> resourceKeyMap = {
+        {PrintJobSubState::PRINT_JOB_BLOCKED_DOOR_OPEN, "printer_door_open"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_JAMMED, "printer_jammed"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_OUT_OF_INK, "printer_out_of_ink"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_OFFLINE, "printer_offline"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_OUT_OF_TONER, "printer_out_of_toner"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_OUT_OF_PAPER, "printer_out_of_paper"},
+        {PrintJobSubState::PRINT_JOB_BLOCKED_DRIVER_EXCEPTION, "printer_driver_exception"}
+    };
+
+    auto it = resourceKeyMap.find(subState);
+    if (it != resourceKeyMap.end()) {
+        return it->second;
+    }
+    return "";
+}
+
 std::string PrintNotificationBuilder::SubStateToResourceKey(uint32_t subState)
 {
     static const std::map<uint32_t, std::string> resourceKeyMap = {
