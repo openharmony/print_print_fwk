@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+
 #include "hisysevent.h"
 #include "print_log.h"
 #include "hisys_event_util.h"
