@@ -778,6 +778,13 @@ int32_t PrintCupsClient::AddPrinterToCupsWithSpecificPpd(
         PRINT_HILOGI("add success, printer has added");
         return E_PRINT_NONE;
     }
+    if (ppdName != DEFAULT_PPD_NAME && ppdName != BSUNI_PPD_NAME) {
+        std::string currentHashCode = GetPpdHashCode(ppdName);
+        if (PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(standardName, currentHashCode)) {
+            PRINT_HILOGE("ppd hashcode changed, reject add printer to avoid re-print issue");
+            return E_PRINT_WRITE_PPD_FAILURE;
+        }
+    }
     if (printAbility_ == nullptr) {
         PRINT_HILOGW("printAbility_ is null");
         return E_PRINT_SERVER_FAILURE;
