@@ -778,13 +778,6 @@ int32_t PrintCupsClient::AddPrinterToCupsWithSpecificPpd(
         PRINT_HILOGI("add success, printer has added");
         return E_PRINT_NONE;
     }
-    if (ppdName != DEFAULT_PPD_NAME && ppdName != BSUNI_PPD_NAME) {
-        std::string currentHashCode = GetPpdHashCode(ppdName);
-        if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(standardName, currentHashCode)) {
-            PRINT_HILOGE("ppd hashcode same as before, reject add printer");
-            return E_PRINT_SERVER_FAILURE;
-        }
-    }
     if (printAbility_ == nullptr) {
         PRINT_HILOGW("printAbility_ is null");
         return E_PRINT_SERVER_FAILURE;
@@ -2732,8 +2725,12 @@ bool PrintCupsClient::IsPrinterExist(const char *printerUri, const char *standar
             printerExist = (strstr(makeModel, BSUNI_PPD_NAME.c_str()) != nullptr);
         } else {
             // vendor ppd need to be checked
-            if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
-                standardPrinterName, GetPpdHashCode(ppdName))) {
+            std::string currentHashCode = GetPpdHashCode(ppdName);
+            if (currentHashCode.empty()) {
+                PRINT_HILOGE("ppd hashcode is empty, ppd file may be missing or invalid");
+                printerExist = false;
+            } else if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
+                standardPrinterName, currentHashCode)) {
                 printerExist = true;
                 PRINT_HILOGD("no need to update ppd");
             }
