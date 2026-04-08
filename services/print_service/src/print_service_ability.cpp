@@ -3828,14 +3828,11 @@ bool PrintServiceAbility::AddVendorPrinterToDiscovery(const std::string &globalV
             printSystemData_.UpdatePrinterUri(printerInfo);
             printSystemData_.SavePrinterFile(printerInfo->GetPrinterId());
         }
-        PrinterInfo printer;
-        if (printSystemData_.QueryAddedPrinterInfoByPrinterId(globalPrinterId, printer) &&
-            !DelayedSingleton<PrintCupsClient>::GetInstance()->IsIpAddress(printer.GetPrinterName().c_str())) {
-            *printerInfo = printer;
-        } else {
+        PrinterInfo printer = *printerInfo;
+        if (!printSystemData_.QueryAddedPrinterInfoByPrinterId(globalPrinterId, printer)) {
             PRINT_HILOGW("cannot update printer info by added printer info");
         }
-        UpdatePrinterStatus(*printerInfo, PRINTER_STATUS_IDLE);
+        UpdatePrinterStatus(printer, PRINTER_STATUS_IDLE);
     }
     return true;
 }
