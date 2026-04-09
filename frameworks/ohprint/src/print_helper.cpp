@@ -722,7 +722,7 @@ void SetOptionInPrintTask(const Print_PrintTask &nativePrintTask, PrintJob &prin
     PRINT_HILOGI("SetOptionInPrintTask out.");
 }
 
-void ValidateAndSetNumberUpArgs(const Print_NumberUpArgs &nativeArgs, PrintJob &printJob)
+bool ValidateAndSetNumberUpArgs(const Print_NumberUpArgs &nativeArgs, PrintJob &printJob)
 {
     NumberUpArgs args;
     // Validate numberUp value (must be valid PrintNumberUp enum)
@@ -732,8 +732,8 @@ void ValidateAndSetNumberUpArgs(const Print_NumberUpArgs &nativeArgs, PrintJob &
         numberUpValue == PRINT_NUMBER_UP_9_PAGES || numberUpValue == PRINT_NUMBER_UP_16_PAGES) {
         args.numberUp = numberUpValue;
     } else {
-        PRINT_HILOGW("Invalid numberUp value: %{public}d, using default", numberUpValue);
-        args.numberUp = NUMBER_UP_DEFAULT_VALUE;
+        PRINT_HILOGE("Invalid numberUp value: %{public}d, returning error", numberUpValue);
+        return false;
     }
     // Validate numberUpLayout value (must be valid PrintNumberUpLayout enum)
     uint32_t numberUpLayoutValue = static_cast<uint32_t>(nativeArgs.numberUpLayout);
@@ -760,6 +760,7 @@ void ValidateAndSetNumberUpArgs(const Print_NumberUpArgs &nativeArgs, PrintJob &
         args.pageBorder = PAGE_BORDER_DEFAULT_VALUE;
     }
     printJob.SetNumberUpArgs(args);
+    return true;
 }
 
 void SetDefaultCapabilityInPrintJob(const Print_PrintJob &nativePrintJob, PrintJob &printJob)
@@ -906,7 +907,7 @@ bool SetPrintPageSizeInPrintTask(const Print_PrintTask &nativePrintTask, PrintJo
     return true;
 }
 
-static void SafeGetNumberUpArgs(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
+static bool SafeGetNumberUpArgs(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
 {
     Print_NumberUpArgs defaultArgs = {
         .numberUp = static_cast<::PrintNumberUp>(NUMBER_UP_DEFAULT_VALUE),
@@ -918,12 +919,17 @@ static void SafeGetNumberUpArgs(const Print_PrintTask &nativePrintTask, PrintJob
         PRINT_HILOGW("PrintTask size %{public}u < %{public}zu, using default numberUpArgs",
             nativePrintTask.size, sizeof(Print_PrintTask));
         ValidateAndSetNumberUpArgs(defaultArgs, printJob);
-        return;
+        return true;
     }
-    ValidateAndSetNumberUpArgs(nativePrintTask.numberUpArgs, printJob);
+    if (!ValidateAndSetNumberUpArgs(nativePrintTask.numberUpArgs, printJob)) {
+        printJob.SetJobState(PRINT_JOB_BLOCKED);
+        printJob.SetSubState(PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
+        return false;
+    }
+    return true;
 }
 
-void SetDefaultCapabilityInPrintTask(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
+bool SetDefaultCapabilityInPrintTask(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
 {
     if (nativePrintTask.duplexMode < DUPLEX_MODE_ONE_SIDED ||
         nativePrintTask.duplexMode > DUPLEX_MODE_TWO_SIDED_SHORT_EDGE) {
@@ -957,8 +963,34 @@ void SetDefaultCapabilityInPrintTask(const Print_PrintTask &nativePrintTask, Pri
     }
 
     SetPrintMarginInPrintTask(nativePrintTask, printJob);
-    SafeGetNumberUpArgs(nativePrintTask, printJob);
+    if (!SafeGetNumberUpArgs(nativePrintTask, printJob)) {
+        return false;
+    }
     SetOptionInPrintTask(nativePrintTask, printJob);
+    return true;
+}
+
+static bool SetCommonCapabilityInPrintTask(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
+{
+    if (nativePrintTask.duplexMode < DUPLEX_MODE_ONE_SIDED ||
+        nativePrintTask.duplexMode > DUPLEX_MODE_TWO_SIDED_SHORT_EDGE) {
+        printJob.SetDuplexMode(DUPLEX_MODE_ONE_SIDED);
+    } else {
+        printJob.SetDuplexMode(static_cast<uint32_t>(nativePrintTask.duplexMode));
+    }
+    if (nativePrintTask.colorMode < COLOR_MODE_MONOCHROME || nativePrintTask.colorMode > COLOR_MODE_AUTO) {
+        printJob.SetColorMode(COLOR_MODE_MONOCHROME);
+    } else {
+        printJob.SetColorMode(static_cast<uint32_t>(nativePrintTask.colorMode));
+    }
+    if (!SafeGetNumberUpArgs(nativePrintTask, printJob)) {
+        PRINT_HILOGE("SafeGetNumberUpArgs failed");
+        return false;
+    }
+    SetPrintOrientationInPrintTask(nativePrintTask, printJob);
+    SetPrintMarginInPrintTask(nativePrintTask, printJob);
+    SetPrintPageSizeInPrintTask(nativePrintTask, printJob);
+    return true;
 }
 
 int32_t ConvertNativeTaskToPrintJob(const Print_PrintTask &nativePrintTask, PrintJob &printJob)
@@ -980,26 +1012,15 @@ int32_t ConvertNativeTaskToPrintJob(const Print_PrintTask &nativePrintTask, Prin
     printJob.SetCopyNumber(nativePrintTask.copyNumber);
     if (PrintUtil::startsWith(std::string(nativePrintTask.printerId), RAW_PPD_DRIVER)) {
         PRINT_HILOGI("raw printer, SetDefaultCapabilityInPrintTask start.");
-        SetDefaultCapabilityInPrintTask(nativePrintTask, printJob);
+        if (!SetDefaultCapabilityInPrintTask(nativePrintTask, printJob)) {
+            PRINT_HILOGE("SetDefaultCapabilityInPrintTask failed for raw printer");
+            return E_PRINT_INVALID_PARAMETER;
+        }
         return E_PRINT_NONE;
     }
-
-    if (nativePrintTask.duplexMode < DUPLEX_MODE_ONE_SIDED ||
-        nativePrintTask.duplexMode > DUPLEX_MODE_TWO_SIDED_SHORT_EDGE) {
-        printJob.SetDuplexMode(DUPLEX_MODE_ONE_SIDED);
-    } else {
-        printJob.SetDuplexMode(static_cast<uint32_t>(nativePrintTask.duplexMode));
+    if (!SetCommonCapabilityInPrintTask(nativePrintTask, printJob)) {
+        return E_PRINT_INVALID_PARAMETER;
     }
-    if (nativePrintTask.colorMode < COLOR_MODE_MONOCHROME || nativePrintTask.colorMode > COLOR_MODE_AUTO) {
-        printJob.SetColorMode(COLOR_MODE_MONOCHROME);
-    } else {
-        printJob.SetColorMode(static_cast<uint32_t>(nativePrintTask.colorMode));
-    }
-    SafeGetNumberUpArgs(nativePrintTask, printJob);
-
-    SetPrintOrientationInPrintTask(nativePrintTask, printJob);
-    SetPrintMarginInPrintTask(nativePrintTask, printJob);
-    SetPrintPageSizeInPrintTask(nativePrintTask, printJob);
     SetOptionInPrintTask(nativePrintTask, printJob);
     return E_PRINT_NONE;
 }

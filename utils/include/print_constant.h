@@ -169,6 +169,7 @@ enum PrintJobSubState {
     PRINT_JOB_BLOCKED_SMB_PRINTER = 38,  // SMB print job transmission failed.
     PRINT_JOB_BLOCKED_INPUT_TRAY_MISSING = 39,  // Input tray is missing or not properly installed
     PRINT_JOB_BLOCKED_SECURITY_POLICY_RESTRICTED = 40, // print job restricted by security policy.
+    PRINT_JOB_BLOCKED_INVALID_NUMBER_UP = 41, // n-in-1 print with invalid number-up parameter.
     PRINT_JOB_BLOCKED_PRINTER_UNAVAILABLE = 98, // Printer is stopped.
     PRINT_JOB_BLOCKED_UNKNOWN = 99,             // unknown issue
     PRINT_JOB_SPOOLER_CLOSED_FOR_CANCELED = 101, // For internal use only: Click Cancel
@@ -240,6 +241,11 @@ enum PrintNumberUpLayout {
 constexpr uint32_t NUMBER_UP_MIN_VALUE = 1;   // Minimum value for numberUp (single page per sheet)
 constexpr uint32_t NUMBER_UP_MAX_VALUE = 16;  // Maximum value for numberUp
 constexpr uint32_t NUMBER_UP_DEFAULT_VALUE = 1;  // Default value for numberUp (PRINT_NUMBER_UP_1_PAGE)
+constexpr uint32_t NUMBER_UP_2_PAGES = 2;
+constexpr uint32_t NUMBER_UP_4_PAGES = 4;
+constexpr uint32_t NUMBER_UP_6_PAGES = 6;
+constexpr uint32_t NUMBER_UP_9_PAGES = 9;
+constexpr uint32_t NUMBER_UP_16_PAGES = 16;
 constexpr uint32_t NUMBER_UP_LAYOUT_DEFAULT_VALUE = NUMBER_UP_LAYOUT_LRTB;  // Default layout for numberUp
 constexpr uint32_t MIRROR_DEFAULT_VALUE = 0;  // Default value for mirror (PRINT_MIRROR_DISABLED)
 constexpr uint32_t PAGE_BORDER_DEFAULT_VALUE = 0;  // Default value for pageBorder (PRINT_PAGE_BORDER_NONE)
