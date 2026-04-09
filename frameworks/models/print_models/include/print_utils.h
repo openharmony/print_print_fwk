@@ -72,7 +72,6 @@ struct PrintJobParams {
     uint32_t numberUpLayout = NUMBER_UP_LAYOUT_DEFAULT_VALUE;
     uint32_t mirror = MIRROR_DEFAULT_VALUE;
     uint32_t pageBorder = PAGE_BORDER_DEFAULT_VALUE;
-    bool numberUpArgsInvalid = false;
 };
 
 class PrintUtils {

@@ -200,24 +200,12 @@ void PrintJobHelper::FillNumberUpProperties(napi_env env, napi_value jsValue, st
     // Get mirror from numberUpArgs object
     napi_value jsMirror = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_MIRROR);
     if (jsMirror != nullptr && NapiPrintUtils::GetValueType(env, jsMirror) == napi_number) {
-        uint32_t mirrorValue = NapiPrintUtils::GetUint32FromValue(env, jsMirror);
-        if (mirrorValue == PRINT_MIRROR_ENABLED || mirrorValue == PRINT_MIRROR_DISABLED) {
-            args.mirror = mirrorValue;
-        } else {
-            PRINT_HILOGW("Invalid mirror value: %{public}d, using default", mirrorValue);
-            args.mirror = MIRROR_DEFAULT_VALUE;
-        }
+        args.mirror = NapiPrintUtils::GetUint32FromValue(env, jsMirror);
     }
     // Get pageBorder from numberUpArgs object
     napi_value jsPageBorder = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_PAGEBORDER);
     if (jsPageBorder != nullptr && NapiPrintUtils::GetValueType(env, jsPageBorder) == napi_number) {
-        uint32_t pageBorderValue = NapiPrintUtils::GetUint32FromValue(env, jsPageBorder);
-        if (pageBorderValue <= PRINT_PAGE_BORDER_DOUBLE) {
-            args.pageBorder = pageBorderValue;
-        } else {
-            PRINT_HILOGW("Invalid pageBorder value: %{public}d, using default", pageBorderValue);
-            args.pageBorder = PAGE_BORDER_DEFAULT_VALUE;
-        }
+        args.pageBorder = NapiPrintUtils::GetUint32FromValue(env, jsPageBorder);
     }
     nativeObj->SetNumberUpArgs(args);
 }
@@ -230,15 +218,6 @@ std::shared_ptr<PrintJob> PrintJobHelper::BuildPrintJobFromJs(napi_env env, napi
     }
     PrintJobParams params;
     if (!FillPrintJobParamsFromJs(env, jsValue, params)) {
-        if (params.numberUpArgsInvalid) {
-            auto errorJob = std::make_shared<PrintJob>();
-            errorJob->SetPrinterId(params.printerId);
-            errorJob->SetJobId(params.jobId);
-            errorJob->SetJobState(PRINT_JOB_BLOCKED);
-            errorJob->SetSubState(PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
-            PRINT_HILOGE("numberUpArgs is invalid, set subState to INVALID_NUMBER_UP");
-            return errorJob;
-        }
         return nullptr;
     }
     auto nativeObj = PrintUtils::ConvertParamsToPrintJob(params);
@@ -493,23 +472,13 @@ bool PrintJobHelper::FillNumberUpParams(napi_env env, napi_value jsValue, PrintJ
         return true;
     }
     if (NapiPrintUtils::GetValueType(env, jsNumberUpArgs) != napi_object) {
-        PRINT_HILOGE("numberUpArgs is not an object, invalid parameter");
-        params.numberUpArgsInvalid = true;
-        return false;
+        PRINT_HILOGW("numberUpArgs is not an object, ignoring");
+        return true;
     }
     // Get numberUp from numberUpArgs object
     napi_value jsNumberUp = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_NUMBERUP);
     if (jsNumberUp != nullptr && NapiPrintUtils::GetValueType(env, jsNumberUp) == napi_number) {
-        uint32_t numberUpValue = NapiPrintUtils::GetUint32FromValue(env, jsNumberUp);
-        if (numberUpValue == NUMBER_UP_MIN_VALUE || numberUpValue == NUMBER_UP_2_PAGES ||
-            numberUpValue == NUMBER_UP_4_PAGES || numberUpValue == NUMBER_UP_6_PAGES ||
-            numberUpValue == NUMBER_UP_9_PAGES || numberUpValue == NUMBER_UP_16_PAGES) {
-            params.numberUp = numberUpValue;
-        } else {
-            PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUpValue);
-            params.numberUpArgsInvalid = true;
-            return false;
-        }
+        params.numberUp = NapiPrintUtils::GetUint32FromValue(env, jsNumberUp);
     }
     // Get numberUpLayout from numberUpArgs object
     napi_value jsNumberUpLayout = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_NUMBERUPLAYOUT);
@@ -526,6 +495,7 @@ bool PrintJobHelper::FillNumberUpParams(napi_env env, napi_value jsValue, PrintJ
     if (jsPageBorder != nullptr && NapiPrintUtils::GetValueType(env, jsPageBorder) == napi_number) {
         params.pageBorder = NapiPrintUtils::GetUint32FromValue(env, jsPageBorder);
     }
+    return true;
 }
 
 bool PrintJobHelper::GetFileDescriptorList(napi_env env, napi_value jsValue, std::vector<uint32_t> &printFdList)

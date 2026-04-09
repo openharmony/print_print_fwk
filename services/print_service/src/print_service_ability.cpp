@@ -1321,6 +1321,10 @@ int32_t PrintServiceAbility::StartNativePrintJob(PrintJob &printJob)
         return E_PRINT_KIA_INTERCEPTED;
     }
 #endif
+    int32_t ret = CheckNumberUpArgs(printJob);
+    if (ret != E_PRINT_NONE) {
+        return ret;
+    }
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
     if (!UpdatePrintJobOptionByPrinterId(printJob)) {
         PRINT_HILOGW("cannot update printer name/uri");
@@ -1396,6 +1400,10 @@ int32_t PrintServiceAbility::StartPrintJob(PrintJob &jobInfo)
         return E_PRINT_KIA_INTERCEPTED;
     }
 #endif // EDM_SERVICE_ENABLE
+    int32_t ret = CheckNumberUpArgs(jobInfo);
+    if (ret != E_PRINT_NONE) {
+        return ret;
+    }
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
     if (!CheckPrintJob(jobInfo)) {
         PRINT_HILOGW("check printJob unavailable");
@@ -1433,6 +1441,11 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
             PRINT_HILOGE("Invalid job id.");
             return ret;
         }
+    }
+
+    ret = CheckNumberUpArgs(*printJob);
+    if (ret != E_PRINT_NONE) {
+        return ret;
     }
 
 #ifdef EDM_SERVICE_ENABLE
@@ -1486,6 +1499,19 @@ bool PrintServiceAbility::CheckPrintJob(PrintJob &jobInfo)
     }
     printJobList_.erase(jobIt);
     return true;
+}
+
+int32_t PrintServiceAbility::CheckNumberUpArgs(const PrintJob &printJob)
+{
+    NumberUpArgs numberUpArgs = printJob.GetNumberUpArgs();
+    uint32_t numberUp = numberUpArgs.numberUp;
+    if (numberUp != NUMBER_UP_MIN_VALUE && numberUp != NUMBER_UP_2_PAGES &&
+        numberUp != NUMBER_UP_4_PAGES && numberUp != NUMBER_UP_6_PAGES &&
+        numberUp != NUMBER_UP_9_PAGES && numberUp != NUMBER_UP_16_PAGES) {
+        PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
+        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
+    }
+    return E_PRINT_NONE;
 }
 
 void PrintServiceAbility::OnPrinterLastPrint(PrinterInfo& printerInfo)
