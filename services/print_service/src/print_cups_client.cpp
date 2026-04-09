@@ -2723,10 +2723,12 @@ bool PrintCupsClient::IsPrinterExist(const char *printerUri, const char *standar
                            (strstr(makeModel, REMOTE_PRINTER_MAKE_MODEL.c_str()) != nullptr);
         } else if (strcmp(ppdName, BSUNI_PPD_NAME.c_str()) == 0) {
             printerExist = (strstr(makeModel, BSUNI_PPD_NAME.c_str()) != nullptr);
-        } else if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
-            standardPrinterName, currentHashCode)) {
-            printerExist = true;
-            PRINT_HILOGD("no need to update ppd");
+        } else {
+            // vendor ppd need to be checked
+            if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
+                    standardPrinterName, GetPpdHashCode(ppdName))) {
+                printerExist = true;
+                PRINT_HILOGD("no need to update ppd");
         }
         printAbility_->FreeDests(FREE_ONE_PRINTER, dest);
     }
