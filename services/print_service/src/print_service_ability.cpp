@@ -4255,10 +4255,6 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
         PRINT_HILOGW("printJob is null");
         return E_PRINT_SERVER_FAILURE;
     }
-    int32_t ret = CheckNumberUpArgs(printJob);
-    if (ret != E_PRINT_NONE) {
-        return ret;
-    }
     PRINT_HILOGI("StartPrintJobInternal, option: %{public}s",
         PrintUtils::AnonymizeJobOption(printJob->GetOption()).c_str());
     if (!FlushCacheFileToUserData(printJob->GetJobId())) {
@@ -4267,41 +4263,62 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
     if (!CheckDeviceAndAccountPermission(printJob)) {
         return E_PRINT_BANNED;
     }
+    int32_t ret = CheckNumberUpArgs(*printJob);
+    if (ret != E_PRINT_NONE) {
+        return ret;
+    }
     if (isEprint(printJob->GetPrinterId())) {
-        auto extensionId = PrintUtils::GetExtensionId(printJob->GetPrinterId());
-        int32_t userId = GetCurrentUserId();
-        if (DelayedSingleton<EventListenerMgr>::GetInstance()->IsExtensionListenerEmpty(
-            CallbackEventType::EXTCB_START_PRINT, extensionId, userId)) {
-            return E_PRINT_SERVER_FAILURE;
-        }
-        CallbackInfo cbInfo;
-        cbInfo.cbEventType = CallbackEventType::EXTCB_START_PRINT;
-        cbInfo.extensionId = extensionId;
-        cbInfo.printJobInfo = printJob;
-        cbInfo.userId = userId;
-        auto callback = [this, printJob, cbInfo]() {
-            StartPrintJobCB(printJob->GetJobId(), printJob);
-            DelayedSingleton<EventListenerMgr>::GetInstance()->Execute(cbInfo);
-            CallStatusBar();
-        };
-        if (helper_ != nullptr && helper_->IsSyncMode()) {
-            callback();
-        } else if (serviceHandler_ != nullptr) {
-            serviceHandler_->PostTask(callback, ASYNC_CMD_DELAY);
-        } else {
-            PRINT_HILOGW("serviceHandler_ is nullptr, cannot post task");
-        }
-    } else {
+        return StartEprintJobInternal(printJob);
+    }
 #ifdef CUPS_ENABLE
-        NotifyAppJobQueueChanged(QUEUE_JOB_LIST_PRINTING);
-        DelayedSingleton<PrintCupsClient>::GetInstance()->AddCupsPrintJob(*printJob, GetCallerUserName());
-        CallStatusBar();
+    return StartCupsPrintJob(printJob);
 #endif  // CUPS_ENABLE
+    KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
+    PRINT_HILOGI("StartNativePrintJob end.");
+    return E_PRINT_NONE;
+}
+
+int32_t PrintServiceAbility::StartEprintJobInternal(const std::shared_ptr<PrintJob> &printJob)
+{
+    auto extensionId = PrintUtils::GetExtensionId(printJob->GetPrinterId());
+    int32_t userId = GetCurrentUserId();
+    if (DelayedSingleton<EventListenerMgr>::GetInstance()->IsExtensionListenerEmpty(
+        CallbackEventType::EXTCB_START_PRINT, extensionId, userId)) {
+        return E_PRINT_SERVER_FAILURE;
+    }
+    CallbackInfo cbInfo;
+    cbInfo.cbEventType = CallbackEventType::EXTCB_START_PRINT;
+    cbInfo.extensionId = extensionId;
+    cbInfo.printJobInfo = printJob;
+    cbInfo.userId = userId;
+    auto callback = [this, printJob, cbInfo]() {
+        StartPrintJobCB(printJob->GetJobId(), printJob);
+        DelayedSingleton<EventListenerMgr>::GetInstance()->Execute(cbInfo);
+        CallStatusBar();
+    };
+    if (helper_ != nullptr && helper_->IsSyncMode()) {
+        callback();
+    } else if (serviceHandler_ != nullptr) {
+        serviceHandler_->PostTask(callback, ASYNC_CMD_DELAY);
+    } else {
+        PRINT_HILOGW("serviceHandler_ is nullptr, cannot post task");
     }
     KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
     PRINT_HILOGI("StartNativePrintJob end.");
     return E_PRINT_NONE;
 }
+
+#ifdef CUPS_ENABLE
+int32_t PrintServiceAbility::StartCupsPrintJob(const std::shared_ptr<PrintJob> &printJob)
+{
+    NotifyAppJobQueueChanged(QUEUE_JOB_LIST_PRINTING);
+    DelayedSingleton<PrintCupsClient>::GetInstance()->AddCupsPrintJob(*printJob, GetCallerUserName());
+    CallStatusBar();
+    KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
+    PRINT_HILOGI("StartNativePrintJob end.");
+    return E_PRINT_NONE;
+}
+#endif  // CUPS_ENABLE
 
 int32_t PrintServiceAbility::CheckNumberUpArgs(const PrintJob &printJob)
 {
