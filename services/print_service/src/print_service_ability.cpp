@@ -4263,9 +4263,9 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
     if (!CheckDeviceAndAccountPermission(printJob)) {
         return E_PRINT_BANNED;
     }
-    int32_t ret = CheckNumberUpArgs(*printJob);
-    if (ret != E_PRINT_NONE) {
-        return ret;
+    if (!CheckNumberUpArgs(printJob)) {
+        CallStatusBar();
+        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
     }
     if (isEprint(printJob->GetPrinterId())) {
         return StartEprintJobInternal(printJob);
@@ -4320,17 +4320,18 @@ int32_t PrintServiceAbility::StartCupsPrintJob(const std::shared_ptr<PrintJob> &
 }
 #endif  // CUPS_ENABLE
 
-int32_t PrintServiceAbility::CheckNumberUpArgs(const PrintJob &printJob)
+bool PrintServiceAbility::CheckNumberUpArgs(const std::shared_ptr<PrintJob> &printJob)
 {
-    NumberUpArgs numberUpArgs = printJob.GetNumberUpArgs();
+    NumberUpArgs numberUpArgs = printJob->GetNumberUpArgs();
     uint32_t numberUp = numberUpArgs.numberUp;
     if (numberUp != NUMBER_UP_MIN_VALUE && numberUp != NUMBER_UP_2_PAGES &&
         numberUp != NUMBER_UP_4_PAGES && numberUp != NUMBER_UP_6_PAGES &&
         numberUp != NUMBER_UP_9_PAGES && numberUp != NUMBER_UP_16_PAGES) {
         PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
-        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
+        UpdatePrintJobState(printJob->GetJobId(), PRINT_JOB_BLOCKED, PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
+        return false;
     }
-    return E_PRINT_NONE;
+    return true;
 }
 
 bool PrintServiceAbility::CheckDeviceAndAccountPermission(const std::shared_ptr<PrintJob> &printJob)
