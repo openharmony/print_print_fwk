@@ -2726,9 +2726,10 @@ bool PrintCupsClient::IsPrinterExist(const char *printerUri, const char *standar
         } else {
             // vendor ppd need to be checked
             if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
-                    standardPrinterName, GetPpdHashCode(ppdName))) {
+                standardPrinterName, GetPpdHashCode(ppdName))) {
                 printerExist = true;
                 PRINT_HILOGD("no need to update ppd");
+            }
         }
         printAbility_->FreeDests(FREE_ONE_PRINTER, dest);
     }
