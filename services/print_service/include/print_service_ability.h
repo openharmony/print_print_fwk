@@ -227,6 +227,7 @@ private:
     uint32_t GetListeningState(const uint32_t subState);
     uint32_t GetListeningState(uint32_t state, uint32_t subState);
     bool CheckPrintJob(PrintJob &jobInfo);
+    int32_t CheckNumberUpArgs(const PrintJob &printJob);
     bool CheckPrinterUriDifferent(const std::shared_ptr<PrinterInfo> &info);
     int32_t AddSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool UpdateSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
