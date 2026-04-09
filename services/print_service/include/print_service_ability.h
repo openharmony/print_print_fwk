@@ -228,6 +228,9 @@ private:
     uint32_t GetListeningState(uint32_t state, uint32_t subState);
     bool CheckPrintJob(PrintJob &jobInfo);
     int32_t CheckNumberUpArgs(const PrintJob &printJob);
+    int32_t QueryAndValidatePrintJob(const std::string &jobId, PrintJob &printJob);
+    int32_t ReopenCacheFdAndUpdateJob(const std::string &jobId, const std::shared_ptr<PrintJob> &printJob);
+    int32_t StartNewPrintJob(const std::shared_ptr<PrintJob> &printJob, const std::string &oldJobId);
     bool CheckPrinterUriDifferent(const std::shared_ptr<PrinterInfo> &info);
     int32_t AddSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool UpdateSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);

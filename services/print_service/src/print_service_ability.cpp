@@ -1432,15 +1432,10 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
 
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
 
-    // is restratable printJob & get jobinfo
     auto printJob = std::make_shared<PrintJob>();
-    int32_t ret = QueryQueuedPrintJobById(jobId, *printJob);
+    int32_t ret = QueryAndValidatePrintJob(jobId, *printJob);
     if (ret != E_PRINT_NONE) {
-        ret = QueryHistoryPrintJobById(jobId, *printJob);
-        if (ret != E_PRINT_NONE) {
-            PRINT_HILOGE("Invalid job id.");
-            return ret;
-        }
+        return ret;
     }
 
     ret = CheckNumberUpArgs(*printJob);
@@ -1459,7 +1454,29 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
     }
 #endif // EDM_SERVICE_ENABLE
 
-    // reopen fd from cache
+    ret = ReopenCacheFdAndUpdateJob(jobId, printJob);
+    if (ret != E_PRINT_NONE) {
+        return ret;
+    }
+
+    return StartNewPrintJob(printJob, jobId);
+}
+
+int32_t PrintServiceAbility::QueryAndValidatePrintJob(const std::string &jobId, PrintJob &printJob)
+{
+    int32_t ret = QueryQueuedPrintJobById(jobId, printJob);
+    if (ret != E_PRINT_NONE) {
+        ret = QueryHistoryPrintJobById(jobId, printJob);
+        if (ret != E_PRINT_NONE) {
+            PRINT_HILOGE("Invalid job id.");
+        }
+    }
+    return ret;
+}
+
+int32_t PrintServiceAbility::ReopenCacheFdAndUpdateJob(const std::string &jobId,
+    const std::shared_ptr<PrintJob> &printJob)
+{
     std::vector<uint32_t> fdList;
     OpenCacheFileFd(jobId, fdList);
     if (fdList.empty()) {
@@ -1469,18 +1486,21 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
     printJob->SetJobId(PrintUtils::GetPrintJobId());
     PRINT_HILOGI("[Job Id: %{public}s] RestartPrintJob", printJob->GetJobId().c_str());
     printJob->SetFdList(fdList);
+    return E_PRINT_NONE;
+}
 
-    // start new printjob
+int32_t PrintServiceAbility::StartNewPrintJob(const std::shared_ptr<PrintJob> &printJob, const std::string &oldJobId)
+{
     PRINT_HILOGI("set job state to PRINT_JOB_QUEUED");
     printJob->SetJobState(PRINT_JOB_QUEUED);
     AddToPrintJobList(printJob->GetJobId(), printJob);
     UpdateQueuedJobList(printJob->GetJobId(), printJob);
     printerJobMap_[printJob->GetPrinterId()].insert(std::make_pair(printJob->GetJobId(), true));
-    ret = StartPrintJobInternal(printJob);
+    int32_t ret = StartPrintJobInternal(printJob);
     if (ret == E_PRINT_NONE) {
         PRINT_HILOGI("[Job Id: %{public}s] RestartPrintJob success, oldJobId: %{public}s",
-            printJob->GetJobId().c_str(), jobId.c_str());
-        CancelPrintJob(jobId);
+            printJob->GetJobId().c_str(), oldJobId.c_str());
+        CancelPrintJob(oldJobId);
     }
     return ret;
 }
