@@ -1321,10 +1321,6 @@ int32_t PrintServiceAbility::StartNativePrintJob(PrintJob &printJob)
         return E_PRINT_KIA_INTERCEPTED;
     }
 #endif
-    int32_t ret = CheckNumberUpArgs(printJob);
-    if (ret != E_PRINT_NONE) {
-        return ret;
-    }
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
     if (!UpdatePrintJobOptionByPrinterId(printJob)) {
         PRINT_HILOGW("cannot update printer name/uri");
@@ -1400,10 +1396,6 @@ int32_t PrintServiceAbility::StartPrintJob(PrintJob &jobInfo)
         return E_PRINT_KIA_INTERCEPTED;
     }
 #endif // EDM_SERVICE_ENABLE
-    int32_t ret = CheckNumberUpArgs(jobInfo);
-    if (ret != E_PRINT_NONE) {
-        return ret;
-    }
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
     if (!CheckPrintJob(jobInfo)) {
         PRINT_HILOGW("check printJob unavailable");
@@ -1432,15 +1424,15 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
 
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
 
+    // is restratable printJob & get jobinfo
     auto printJob = std::make_shared<PrintJob>();
-    int32_t ret = QueryAndValidatePrintJob(jobId, *printJob);
+    int32_t ret = QueryQueuedPrintJobById(jobId, *printJob);
     if (ret != E_PRINT_NONE) {
-        return ret;
-    }
-
-    ret = CheckNumberUpArgs(*printJob);
-    if (ret != E_PRINT_NONE) {
-        return ret;
+        ret = QueryHistoryPrintJobById(jobId, *printJob);
+        if (ret != E_PRINT_NONE) {
+            PRINT_HILOGE("Invalid job id.");
+            return ret;
+        }
     }
 
 #ifdef EDM_SERVICE_ENABLE
@@ -1454,29 +1446,7 @@ int32_t PrintServiceAbility::RestartPrintJob(const std::string &jobId)
     }
 #endif // EDM_SERVICE_ENABLE
 
-    ret = ReopenCacheFdAndUpdateJob(jobId, printJob);
-    if (ret != E_PRINT_NONE) {
-        return ret;
-    }
-
-    return StartNewPrintJob(printJob, jobId);
-}
-
-int32_t PrintServiceAbility::QueryAndValidatePrintJob(const std::string &jobId, PrintJob &printJob)
-{
-    int32_t ret = QueryQueuedPrintJobById(jobId, printJob);
-    if (ret != E_PRINT_NONE) {
-        ret = QueryHistoryPrintJobById(jobId, printJob);
-        if (ret != E_PRINT_NONE) {
-            PRINT_HILOGE("Invalid job id.");
-        }
-    }
-    return ret;
-}
-
-int32_t PrintServiceAbility::ReopenCacheFdAndUpdateJob(const std::string &jobId,
-    const std::shared_ptr<PrintJob> &printJob)
-{
+    // reopen fd from cache
     std::vector<uint32_t> fdList;
     OpenCacheFileFd(jobId, fdList);
     if (fdList.empty()) {
@@ -1486,21 +1456,18 @@ int32_t PrintServiceAbility::ReopenCacheFdAndUpdateJob(const std::string &jobId,
     printJob->SetJobId(PrintUtils::GetPrintJobId());
     PRINT_HILOGI("[Job Id: %{public}s] RestartPrintJob", printJob->GetJobId().c_str());
     printJob->SetFdList(fdList);
-    return E_PRINT_NONE;
-}
 
-int32_t PrintServiceAbility::StartNewPrintJob(const std::shared_ptr<PrintJob> &printJob, const std::string &oldJobId)
-{
+    // start new printjob
     PRINT_HILOGI("set job state to PRINT_JOB_QUEUED");
     printJob->SetJobState(PRINT_JOB_QUEUED);
     AddToPrintJobList(printJob->GetJobId(), printJob);
     UpdateQueuedJobList(printJob->GetJobId(), printJob);
     printerJobMap_[printJob->GetPrinterId()].insert(std::make_pair(printJob->GetJobId(), true));
-    int32_t ret = StartPrintJobInternal(printJob);
+    ret = StartPrintJobInternal(printJob);
     if (ret == E_PRINT_NONE) {
         PRINT_HILOGI("[Job Id: %{public}s] RestartPrintJob success, oldJobId: %{public}s",
-            printJob->GetJobId().c_str(), oldJobId.c_str());
-        CancelPrintJob(oldJobId);
+            printJob->GetJobId().c_str(), jobId.c_str());
+        CancelPrintJob(jobId);
     }
     return ret;
 }
@@ -1519,19 +1486,6 @@ bool PrintServiceAbility::CheckPrintJob(PrintJob &jobInfo)
     }
     printJobList_.erase(jobIt);
     return true;
-}
-
-int32_t PrintServiceAbility::CheckNumberUpArgs(const PrintJob &printJob)
-{
-    NumberUpArgs numberUpArgs = printJob.GetNumberUpArgs();
-    uint32_t numberUp = numberUpArgs.numberUp;
-    if (numberUp != NUMBER_UP_MIN_VALUE && numberUp != NUMBER_UP_2_PAGES &&
-        numberUp != NUMBER_UP_4_PAGES && numberUp != NUMBER_UP_6_PAGES &&
-        numberUp != NUMBER_UP_9_PAGES && numberUp != NUMBER_UP_16_PAGES) {
-        PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
-        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
-    }
-    return E_PRINT_NONE;
 }
 
 void PrintServiceAbility::OnPrinterLastPrint(PrinterInfo& printerInfo)
@@ -4342,6 +4296,19 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
     }
     KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
     PRINT_HILOGI("StartNativePrintJob end.");
+    return E_PRINT_NONE;
+}
+
+int32_t PrintServiceAbility::CheckNumberUpArgs(const PrintJob &printJob)
+{
+    NumberUpArgs numberUpArgs = printJob.GetNumberUpArgs();
+    uint32_t numberUp = numberUpArgs.numberUp;
+    if (numberUp != NUMBER_UP_MIN_VALUE && numberUp != NUMBER_UP_2_PAGES &&
+        numberUp != NUMBER_UP_4_PAGES && numberUp != NUMBER_UP_6_PAGES &&
+        numberUp != NUMBER_UP_9_PAGES && numberUp != NUMBER_UP_16_PAGES) {
+        PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
+        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
+    }
     return E_PRINT_NONE;
 }
 

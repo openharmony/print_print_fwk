@@ -227,10 +227,6 @@ private:
     uint32_t GetListeningState(const uint32_t subState);
     uint32_t GetListeningState(uint32_t state, uint32_t subState);
     bool CheckPrintJob(PrintJob &jobInfo);
-    int32_t CheckNumberUpArgs(const PrintJob &printJob);
-    int32_t QueryAndValidatePrintJob(const std::string &jobId, PrintJob &printJob);
-    int32_t ReopenCacheFdAndUpdateJob(const std::string &jobId, const std::shared_ptr<PrintJob> &printJob);
-    int32_t StartNewPrintJob(const std::shared_ptr<PrintJob> &printJob, const std::string &oldJobId);
     bool CheckPrinterUriDifferent(const std::shared_ptr<PrinterInfo> &info);
     int32_t AddSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool UpdateSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
@@ -311,6 +307,7 @@ private:
     int32_t StartExtensionDiscovery(const std::vector<std::string> &extensionIds);
     void PostDiscoveryTask(const std::string &extensionId);
     int32_t StartPrintJobInternal(const std::shared_ptr<PrintJob> &printJob);
+    int32_t CheckNumberUpArgs(const PrintJob &printJob);
     bool CheckDeviceAndAccountPermission(const std::shared_ptr<PrintJob> &printJob);
     int32_t QueryVendorPrinterInfo(const std::string &globalPrinterId, PrinterInfo &info);
     int32_t TryConnectPrinterByIp(const std::string &params);
