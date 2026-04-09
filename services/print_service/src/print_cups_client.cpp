@@ -2717,16 +2717,12 @@ bool PrintCupsClient::IsPrinterExist(const char *printerUri, const char *standar
             PRINT_HILOGI("Printer information needs to be modified");
             return printerExist;
         }
-        std::string currentHashCode = GetPpdHashCode(ppdName);
         if (strcmp(ppdName, DEFAULT_PPD_NAME.c_str()) == 0) {
             // find everywhere or remote printr driver
             printerExist = (strstr(makeModel, DEFAULT_MAKE_MODEL.c_str()) != nullptr) ||
                            (strstr(makeModel, REMOTE_PRINTER_MAKE_MODEL.c_str()) != nullptr);
         } else if (strcmp(ppdName, BSUNI_PPD_NAME.c_str()) == 0) {
             printerExist = (strstr(makeModel, BSUNI_PPD_NAME.c_str()) != nullptr);
-        } else if (currentHashCode.empty()) { // vendor ppd need to be checked
-            PRINT_HILOGE("ppd hashcode is empty, ppd file may be missing or invalid");
-            printerExist = false;
         } else if (!PrintServiceAbility::GetInstance()->IsPrinterPpdUpdateRequired(
             standardPrinterName, currentHashCode)) {
             printerExist = true;
