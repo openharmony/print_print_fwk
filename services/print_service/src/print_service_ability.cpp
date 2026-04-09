@@ -4255,6 +4255,10 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
         PRINT_HILOGW("printJob is null");
         return E_PRINT_SERVER_FAILURE;
     }
+    int32_t ret = CheckNumberUpArgs(printJob);
+    if (ret != E_PRINT_NONE) {
+        return ret;
+    }
     PRINT_HILOGI("StartPrintJobInternal, option: %{public}s",
         PrintUtils::AnonymizeJobOption(printJob->GetOption()).c_str());
     if (!FlushCacheFileToUserData(printJob->GetJobId())) {
