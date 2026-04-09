@@ -494,6 +494,26 @@ char *ParseDetailInfo(const PrinterInfo &info)
         if (PrintJsonUtil::IsMember(opsJson, "productId") && opsJson["productId"].isInt()) {
             detailInfoJson["productId"] = opsJson["productId"].asInt();
         }
+
+        if (PrintJsonUtil::IsMember(opsJson, "protocol") && opsJson["protocol"].isArray()) {
+            detailInfoJson["protocol"] = opsJson["protocol"];
+        }
+
+        if (PrintJsonUtil::IsMember(opsJson, "ipp") && opsJson["ipp"].isString()) {
+            detailInfoJson["ipp"] = opsJson["ipp"].asString();
+        }
+
+        if (PrintJsonUtil::IsMember(opsJson, "ipps") && opsJson["ipps"].isString()) {
+            detailInfoJson["ipps"] = opsJson["ipps"].asString();
+        }
+
+        if (PrintJsonUtil::IsMember(opsJson, "lpd") && opsJson["lpd"].isString()) {
+            detailInfoJson["lpd"] = opsJson["lpd"].asString();
+        }
+
+        if (PrintJsonUtil::IsMember(opsJson, "socket") && opsJson["socket"].isString()) {
+            detailInfoJson["socket"] = opsJson["socket"].asString();
+        }
     }
 
     if (detailInfoJson.isNull() || detailInfoJson.empty()) {
