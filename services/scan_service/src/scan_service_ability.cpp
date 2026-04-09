@@ -1162,13 +1162,10 @@ void ScanServiceAbility::StartScanTask(ScanTask &scanTask)
         SCAN_HILOGI("start single mode scan");
         GeneratePictureSingle(scanTask);
     }
-    {
-        std::lock_guard<std::mutex> autoLock(lock_);
-        SCAN_HILOGI("StartScanTask finished, doning scan task free");
-        SaneManagerClient::GetInstance()->SaneCancel(scanTask.GetScannerId());
-        SaneManagerClient::GetInstance()->SaneClose(scanTask.GetScannerId());
-        SaneManagerClient::GetInstance()->SaneOpen(scanTask.GetScannerId());
-    }
+    SCAN_HILOGI("StartScanTask finished, doning scan task free");
+    SaneManagerClient::GetInstance()->SaneCancel(scanTask.GetScannerId());
+    SaneManagerClient::GetInstance()->SaneClose(scanTask.GetScannerId());
+    SaneManagerClient::GetInstance()->SaneOpen(scanTask.GetScannerId());
     scannerState_.store(SCANNER_READY);
     SCAN_HILOGI("ScanServiceAbility StartScanTask end");
 }
