@@ -230,6 +230,15 @@ std::shared_ptr<PrintJob> PrintJobHelper::BuildPrintJobFromJs(napi_env env, napi
     }
     PrintJobParams params;
     if (!FillPrintJobParamsFromJs(env, jsValue, params)) {
+        if (params.numberUpArgsInvalid) {
+            auto errorJob = std::make_shared<PrintJob>();
+            errorJob->SetPrinterId(params.printerId);
+            errorJob->SetJobId(params.jobId);
+            errorJob->SetJobState(PRINT_JOB_BLOCKED);
+            errorJob->SetSubState(PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
+            PRINT_HILOGE("numberUpArgs is invalid, set subState to INVALID_NUMBER_UP");
+            return errorJob;
+        }
         return nullptr;
     }
     auto nativeObj = PrintUtils::ConvertParamsToPrintJob(params);
@@ -442,7 +451,9 @@ bool PrintJobHelper::FillOptionalParamsFromJs(napi_env env, napi_value jsValue, 
         return false;
     }
     params.cupsOptions = NapiPrintUtils::GetStringPropertyUtf8(env, jsValue, PARAM_JOB_OPTION);
-    FillNumberUpParams(env, jsValue, params);
+    if (!FillNumberUpParams(env, jsValue, params)) {
+        return false;
+    }
     return true;
 }
 
@@ -474,21 +485,31 @@ void PrintJobHelper::FillBoolParamIfExists(napi_env env, napi_value jsValue,
     }
 }
 
-void PrintJobHelper::FillNumberUpParams(napi_env env, napi_value jsValue, PrintJobParams &params)
+bool PrintJobHelper::FillNumberUpParams(napi_env env, napi_value jsValue, PrintJobParams &params)
 {
     napi_value jsNumberUpArgs = NapiPrintUtils::GetNamedProperty(env, jsValue, PARAM_JOB_NUMBERUPARGS);
     if (jsNumberUpArgs == nullptr) {
         PRINT_HILOGD("numberUpArgs is not provided, using default values");
-        return;
+        return true;
     }
     if (NapiPrintUtils::GetValueType(env, jsNumberUpArgs) != napi_object) {
-        PRINT_HILOGW("numberUpArgs is not an object, using default values");
-        return;
+        PRINT_HILOGE("numberUpArgs is not an object, invalid parameter");
+        params.numberUpArgsInvalid = true;
+        return false;
     }
     // Get numberUp from numberUpArgs object
     napi_value jsNumberUp = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_NUMBERUP);
     if (jsNumberUp != nullptr && NapiPrintUtils::GetValueType(env, jsNumberUp) == napi_number) {
-        params.numberUp = NapiPrintUtils::GetUint32FromValue(env, jsNumberUp);
+        uint32_t numberUpValue = NapiPrintUtils::GetUint32FromValue(env, jsNumberUp);
+        if (numberUpValue == NUMBER_UP_MIN_VALUE || numberUpValue == NUMBER_UP_2_PAGES ||
+            numberUpValue == NUMBER_UP_4_PAGES || numberUpValue == NUMBER_UP_6_PAGES ||
+            numberUpValue == NUMBER_UP_9_PAGES || numberUpValue == NUMBER_UP_16_PAGES) {
+            params.numberUp = numberUpValue;
+        } else {
+            PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUpValue);
+            params.numberUpArgsInvalid = true;
+            return false;
+        }
     }
     // Get numberUpLayout from numberUpArgs object
     napi_value jsNumberUpLayout = NapiPrintUtils::GetNamedProperty(env, jsNumberUpArgs, PARAM_JOB_NUMBERUPLAYOUT);
