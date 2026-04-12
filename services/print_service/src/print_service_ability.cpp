@@ -4271,12 +4271,7 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
     if (isEprint(printJob->GetPrinterId())) {
         return StartEprintJobInternal(printJob);
     }
-#ifdef CUPS_ENABLE
     return StartCupsPrintJob(printJob);
-#endif  // CUPS_ENABLE
-    KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
-    PRINT_HILOGI("StartNativePrintJob end.");
-    return E_PRINT_NONE;
 }
 
 int32_t PrintServiceAbility::StartEprintJobInternal(const std::shared_ptr<PrintJob> &printJob)
