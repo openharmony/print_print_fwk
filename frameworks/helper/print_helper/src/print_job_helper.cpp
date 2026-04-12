@@ -431,6 +431,7 @@ bool PrintJobHelper::FillOptionalParamsFromJs(napi_env env, napi_value jsValue, 
     }
     params.cupsOptions = NapiPrintUtils::GetStringPropertyUtf8(env, jsValue, PARAM_JOB_OPTION);
     FillNumberUpParams(env, jsValue, params);
+    return true;
 }
 
 void PrintJobHelper::FillIntOptionalParams(napi_env env, napi_value jsValue, PrintJobParams &params)
