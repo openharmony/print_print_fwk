@@ -45,7 +45,7 @@ private:
     static void FillBoolOptionalParams(napi_env env, napi_value jsValue, PrintJobParams &params);
     static void FillBoolParamIfExists(napi_env env, napi_value jsValue,
         const std::string &paramName, int32_t &paramValue);
-    static bool FillNumberUpParams(napi_env env, napi_value jsValue, PrintJobParams &params);
+    static void FillNumberUpParams(napi_env env, napi_value jsValue, PrintJobParams &params);
     static bool GetPrintPageRange(napi_env env, napi_value jsValue, PrintJobParams &params);
     static bool GetPrintMargin(napi_env env, napi_value jsValue, PrintJobParams &params);
     static bool GetPrintPreview(napi_env env, napi_value jsValue, PrintJobParams &params);
