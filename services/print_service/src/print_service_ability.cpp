@@ -14,6 +14,7 @@
  */
 #include "print_service_ability.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <ctime>
 #include <string>
@@ -4308,7 +4309,6 @@ int32_t PrintServiceAbility::StartEprintJobInternal(const std::shared_ptr<PrintJ
     return E_PRINT_NONE;
 }
 
-#ifdef CUPS_ENABLE
 int32_t PrintServiceAbility::StartCupsPrintJob(const std::shared_ptr<PrintJob> &printJob)
 {
     NotifyAppJobQueueChanged(QUEUE_JOB_LIST_PRINTING);
@@ -4318,15 +4318,16 @@ int32_t PrintServiceAbility::StartCupsPrintJob(const std::shared_ptr<PrintJob> &
     PRINT_HILOGI("StartNativePrintJob end.");
     return E_PRINT_NONE;
 }
-#endif  // CUPS_ENABLE
 
 bool PrintServiceAbility::CheckNumberUpArgs(const std::shared_ptr<PrintJob> &printJob)
 {
     NumberUpArgs numberUpArgs = printJob->GetNumberUpArgs();
     uint32_t numberUp = numberUpArgs.numberUp;
-    if (numberUp != NUMBER_UP_MIN_VALUE && numberUp != NUMBER_UP_2_PAGES &&
-        numberUp != NUMBER_UP_4_PAGES && numberUp != NUMBER_UP_6_PAGES &&
-        numberUp != NUMBER_UP_9_PAGES && numberUp != NUMBER_UP_16_PAGES) {
+    static constexpr std::array<uint32_t, 6> validNumberUpValues = {
+        NUMBER_UP_MIN_VALUE, NUMBER_UP_2_PAGES, NUMBER_UP_4_PAGES,
+        NUMBER_UP_6_PAGES, NUMBER_UP_9_PAGES, NUMBER_UP_16_PAGES
+    };
+    if (std::find(validNumberUpValues.begin(), validNumberUpValues.end(), numberUp) == validNumberUpValues.end()) {
         PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
         UpdatePrintJobState(printJob->GetJobId(), PRINT_JOB_BLOCKED, PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
         return false;
