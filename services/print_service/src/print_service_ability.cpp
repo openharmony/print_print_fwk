@@ -14,6 +14,7 @@
  */
 #include "print_service_ability.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <ctime>
 #include <string>
@@ -4263,40 +4264,70 @@ int32_t PrintServiceAbility::StartPrintJobInternal(const std::shared_ptr<PrintJo
     if (!CheckDeviceAndAccountPermission(printJob)) {
         return E_PRINT_BANNED;
     }
-    if (isEprint(printJob->GetPrinterId())) {
-        auto extensionId = PrintUtils::GetExtensionId(printJob->GetPrinterId());
-        int32_t userId = GetCurrentUserId();
-        if (DelayedSingleton<EventListenerMgr>::GetInstance()->IsExtensionListenerEmpty(
-            CallbackEventType::EXTCB_START_PRINT, extensionId, userId)) {
-            return E_PRINT_SERVER_FAILURE;
-        }
-        CallbackInfo cbInfo;
-        cbInfo.cbEventType = CallbackEventType::EXTCB_START_PRINT;
-        cbInfo.extensionId = extensionId;
-        cbInfo.printJobInfo = printJob;
-        cbInfo.userId = userId;
-        auto callback = [this, printJob, cbInfo]() {
-            StartPrintJobCB(printJob->GetJobId(), printJob);
-            DelayedSingleton<EventListenerMgr>::GetInstance()->Execute(cbInfo);
-            CallStatusBar();
-        };
-        if (helper_ != nullptr && helper_->IsSyncMode()) {
-            callback();
-        } else if (serviceHandler_ != nullptr) {
-            serviceHandler_->PostTask(callback, ASYNC_CMD_DELAY);
-        } else {
-            PRINT_HILOGW("serviceHandler_ is nullptr, cannot post task");
-        }
-    } else {
-#ifdef CUPS_ENABLE
-        NotifyAppJobQueueChanged(QUEUE_JOB_LIST_PRINTING);
-        DelayedSingleton<PrintCupsClient>::GetInstance()->AddCupsPrintJob(*printJob, GetCallerUserName());
+    if (!CheckNumberUpArgs(printJob)) {
         CallStatusBar();
-#endif  // CUPS_ENABLE
+        return PRINT_JOB_BLOCKED_INVALID_NUMBER_UP;
+    }
+    if (isEprint(printJob->GetPrinterId())) {
+        return StartEprintJobInternal(printJob);
+    }
+    return StartCupsPrintJob(printJob);
+}
+
+int32_t PrintServiceAbility::StartEprintJobInternal(const std::shared_ptr<PrintJob> &printJob)
+{
+    auto extensionId = PrintUtils::GetExtensionId(printJob->GetPrinterId());
+    int32_t userId = GetCurrentUserId();
+    if (DelayedSingleton<EventListenerMgr>::GetInstance()->IsExtensionListenerEmpty(
+        CallbackEventType::EXTCB_START_PRINT, extensionId, userId)) {
+        return E_PRINT_SERVER_FAILURE;
+    }
+    CallbackInfo cbInfo;
+    cbInfo.cbEventType = CallbackEventType::EXTCB_START_PRINT;
+    cbInfo.extensionId = extensionId;
+    cbInfo.printJobInfo = printJob;
+    cbInfo.userId = userId;
+    auto callback = [this, printJob, cbInfo]() {
+        StartPrintJobCB(printJob->GetJobId(), printJob);
+        DelayedSingleton<EventListenerMgr>::GetInstance()->Execute(cbInfo);
+        CallStatusBar();
+    };
+    if (helper_ != nullptr && helper_->IsSyncMode()) {
+        callback();
+    } else if (serviceHandler_ != nullptr) {
+        serviceHandler_->PostTask(callback, ASYNC_CMD_DELAY);
+    } else {
+        PRINT_HILOGW("serviceHandler_ is nullptr, cannot post task");
     }
     KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
     PRINT_HILOGI("StartNativePrintJob end.");
     return E_PRINT_NONE;
+}
+
+int32_t PrintServiceAbility::StartCupsPrintJob(const std::shared_ptr<PrintJob> &printJob)
+{
+    NotifyAppJobQueueChanged(QUEUE_JOB_LIST_PRINTING);
+    DelayedSingleton<PrintCupsClient>::GetInstance()->AddCupsPrintJob(*printJob, GetCallerUserName());
+    CallStatusBar();
+    KiaInterceptorManager::GetInstance().RemoveCallerAppId(printJob->GetJobId());
+    PRINT_HILOGI("StartNativePrintJob end.");
+    return E_PRINT_NONE;
+}
+
+bool PrintServiceAbility::CheckNumberUpArgs(const std::shared_ptr<PrintJob> &printJob)
+{
+    NumberUpArgs numberUpArgs = printJob->GetNumberUpArgs();
+    uint32_t numberUp = numberUpArgs.numberUp;
+    static constexpr std::array<uint32_t, 6> validNumberUpValues = {
+        NUMBER_UP_MIN_VALUE, NUMBER_UP_2_PAGES, NUMBER_UP_4_PAGES,
+        NUMBER_UP_6_PAGES, NUMBER_UP_9_PAGES, NUMBER_UP_16_PAGES
+    };
+    if (std::find(validNumberUpValues.begin(), validNumberUpValues.end(), numberUp) == validNumberUpValues.end()) {
+        PRINT_HILOGE("Invalid numberUp value: %{public}d", numberUp);
+        UpdatePrintJobState(printJob->GetJobId(), PRINT_JOB_BLOCKED, PRINT_JOB_BLOCKED_INVALID_NUMBER_UP);
+        return false;
+    }
+    return true;
 }
 
 bool PrintServiceAbility::CheckDeviceAndAccountPermission(const std::shared_ptr<PrintJob> &printJob)
