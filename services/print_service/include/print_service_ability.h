@@ -307,6 +307,9 @@ private:
     int32_t StartExtensionDiscovery(const std::vector<std::string> &extensionIds);
     void PostDiscoveryTask(const std::string &extensionId);
     int32_t StartPrintJobInternal(const std::shared_ptr<PrintJob> &printJob);
+    bool CheckNumberUpArgs(const std::shared_ptr<PrintJob> &printJob);
+    int32_t StartEprintJobInternal(const std::shared_ptr<PrintJob> &printJob);
+    int32_t StartCupsPrintJob(const std::shared_ptr<PrintJob> &printJob);
     bool CheckDeviceAndAccountPermission(const std::shared_ptr<PrintJob> &printJob);
     int32_t QueryVendorPrinterInfo(const std::string &globalPrinterId, PrinterInfo &info);
     int32_t TryConnectPrinterByIp(const std::string &params);
