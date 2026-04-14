@@ -5372,6 +5372,13 @@ int32_t PrintServiceAbility::ConnectSmbPrinter(PrinterInfo& printerInfo, const s
     printerInfo.SetCapability(printerCaps);
     std::string ppdHashCode = DelayedSingleton<PrintCupsClient>::GetInstance()->GetPpdHashCode(ppdName);
     printerInfo.SetPpdHashCode(ppdHashCode);
+    PpdInfo ppdInfo;
+    if (!DelayedSingleton<PrintCupsClient>::GetInstance()->QueryInfoByPpdName(ppdName, ppdInfo)) {
+        PRINT_HILOGW("cannot Find PPDFile, Reset to auto");
+        ppdInfo.SetPpdInfo("auto", "auto", ppdName);
+    }
+    printerInfo.SetSelectedDriver(ppdInfo);
+    printerInfo.SetSelectedProtocol("smb");
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
     UpdatePrinterCapability(printerInfo.GetPrinterId(), printerInfo);
     printerInfo.SetPrinterState(PRINTER_UPDATE_CAP);
