@@ -130,6 +130,7 @@ public:
         const PrintJob &printJob, std::vector<std::string> &conflictingOptions) override;
     int32_t GetPrinterDefaultPreferences(const std::string &printerId, PrinterPreferences &defaultPreferences) override;
     int32_t GetSharedHosts(std::vector<PrintSharedHost> &sharedHosts) override;
+    int32_t StartSharedHostDiscovery() override;
     int32_t AuthSmbDevice(const PrintSharedHost& sharedHost, const std::string &userName, char *userPasswd,
         std::vector<PrinterInfo>& printerInfos) override;
 
@@ -375,6 +376,7 @@ private:
     bool discoveryCallerMonitorThread = false;
 
     std::atomic<bool> isMonitoring_{false};
+    std::atomic<bool> isSmbHostDiscovering_{false};
 
 #ifdef ENTERPRISE_ENABLE
 private:
