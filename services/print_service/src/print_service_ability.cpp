@@ -129,6 +129,7 @@ static const std::unordered_map<std::string, CallbackEventType> CB_EVENT_TYPE_MA
     {PRINT_CALLBACK_JOB_STATE_TYPE, PRINT_JOB_STATE_CALLBACK},
     {PRINT_ADAPTER_EVENT_TYPE, PRINT_JOB_CALLBACK_ADAPTER},
     {PRINT_GET_FILE_EVENT_TYPE, PRINT_JOB_FILE_GET_ADAPTER},
+    {SHARED_HOST_DISCOVER_EVENT_TYPE, PRINTER_SHARED_HOST_DISCOVER},
 };
 static const std::string CALLER_PKG_NAME = "caller.pkgName";
 static const std::string MDNS_PRINTER = "mdns";
@@ -2655,7 +2656,7 @@ int32_t PrintServiceAbility::On(const std::string taskId, const std::string &typ
     std::string permission = PERMISSION_NAME_PRINT;
     std::string eventType = type;
     if (type == PRINTER_EVENT_TYPE || type == PRINTJOB_EVENT_TYPE || type == EXTINFO_EVENT_TYPE ||
-        type == PRINT_QUERY_INFO_EVENT_TYPE) {
+        type == PRINT_QUERY_INFO_EVENT_TYPE || type == SHARED_HOST_DISCOVER_EVENT_TYPE) {
         permission = PERMISSION_NAME_PRINT_JOB;
     }
     if (!CheckPermission(permission)) {
@@ -2679,7 +2680,7 @@ int32_t PrintServiceAbility::On(const std::string taskId, const std::string &typ
     }
     bool ret = true;
     if (type == PRINTER_CHANGE_EVENT_TYPE || type == PRINTER_EVENT_TYPE || type == PRINTJOB_EVENT_TYPE ||
-        type == PRINT_QUERY_INFO_EVENT_TYPE || type == EXTINFO_EVENT_TYPE) {
+        type == PRINT_QUERY_INFO_EVENT_TYPE || type == EXTINFO_EVENT_TYPE || type == SHARED_HOST_DISCOVER_EVENT_TYPE) {
         ret = DelayedSingleton<EventListenerMgr>::GetInstance()->RegisterPrinterListener(
             CB_EVENT_TYPE_MAP.at(type), listener);
     } else if (taskId != "") {
@@ -2702,7 +2703,7 @@ int32_t PrintServiceAbility::Off(const std::string taskId, const std::string &ty
 {
     std::string permission = PERMISSION_NAME_PRINT;
     if (type == PRINTJOB_EVENT_TYPE || type == EXTINFO_EVENT_TYPE || type == PRINTER_EVENT_TYPE ||
-        type == PRINT_QUERY_INFO_EVENT_TYPE) {
+        type == PRINT_QUERY_INFO_EVENT_TYPE || type == SHARED_HOST_DISCOVER_EVENT_TYPE) {
         permission = PERMISSION_NAME_PRINT_JOB;
     }
     if (!CheckPermission(permission)) {
@@ -2721,7 +2722,7 @@ int32_t PrintServiceAbility::Off(const std::string taskId, const std::string &ty
         return E_PRINT_NONE;
     }
     if (type == PRINTER_CHANGE_EVENT_TYPE || type == PRINTER_EVENT_TYPE || type == PRINTJOB_EVENT_TYPE ||
-        type == PRINT_QUERY_INFO_EVENT_TYPE || type == EXTINFO_EVENT_TYPE) {
+        type == PRINT_QUERY_INFO_EVENT_TYPE || type == EXTINFO_EVENT_TYPE || type == SHARED_HOST_DISCOVER_EVENT_TYPE) {
         if (DelayedSingleton<EventListenerMgr>::GetInstance()->UnRegisterPrinterListener(CB_EVENT_TYPE_MAP.at(type))) {
             if (type == PRINTER_CHANGE_EVENT_TYPE) {
                 DecrementPrintCounterByPcSettings();
@@ -5430,6 +5431,45 @@ int32_t PrintServiceAbility::GetSharedHosts(std::vector<PrintSharedHost> &shared
     for (const auto& sharedHost : sharedHosts) {
         sharedHost.Dump();
     }
+#endif // HAVE_SMB_PRINTER
+    return E_PRINT_NONE;
+}
+
+int32_t PrintServiceAbility::StartSharedHostDiscovery()
+{
+    ManualStart();
+    if (!CheckPermission(PERMISSION_NAME_PRINT_JOB)) {
+        PRINT_HILOGE("no permission to access print service");
+        return E_PRINT_NO_PERMISSION;
+    }
+    
+    if (EventListenerMgr::GetInstance()->IsPrinterListenerEmpty(
+        CallbackEventType::PRINTER_SHARED_HOST_DISCOVER)) {
+        PRINT_HILOGE("No registration event");
+        return E_PRINT_INVALID_PARAMETER;
+    }
+#ifdef HAVE_SMB_PRINTER
+    bool expected = false;
+    if (!isSmbHostDiscovering_.compare_exchange_strong(expected, true)) {
+        PRINT_HILOGW("Discovery already in progress");
+        return E_PRINT_NONE;
+    }
+    
+    std::thread discoveryThread([this]() {
+        PRINT_HILOGI("SMBPrinter Discovery thread started");
+        
+        SmbHostSearchHelper helper;
+        auto hosts = helper.GetSharedHosts();
+        PRINT_HILOGI("Discovery completed, found %{public}zu hosts", hosts.size());
+        CallbackInfo cbInfo;
+        cbInfo.cbEventType = CallbackEventType::PRINTER_SHARED_HOST_DISCOVER;
+        cbInfo.sharedHosts = hosts;
+        cbInfo.userId = GetCurrentUserId();
+        EventListenerMgr::GetInstance()->Execute(cbInfo);
+        isSmbHostDiscovering_.store(false);
+    });
+    
+    discoveryThread.detach();
 #endif // HAVE_SMB_PRINTER
     return E_PRINT_NONE;
 }
