@@ -1107,17 +1107,7 @@ int PrintCupsClient::FillMediaOptions(JobParameters *jobParams, int num_options,
     // Extend media value to media=mediaSize,mediaType,inputSlot
     std::string mediaValue = jobParams->mediaSize.empty() ? CUPS_MEDIA_A4 : jobParams->mediaSize;
     mediaValue += "," + (jobParams->mediaType.empty() ? CUPS_MEDIA_TYPE_PLAIN : jobParams->mediaType);
-    std::string inputSlot;
-    if (!jobParams->advancedOpsJson.isNull()) {
-        // Check both PPD_INPUT_SLOT and media-source keys
-        if (jobParams->advancedOpsJson.isMember(PPD_INPUT_SLOT) &&
-            jobParams->advancedOpsJson[PPD_INPUT_SLOT].isString()) {
-            inputSlot = jobParams->advancedOpsJson[PPD_INPUT_SLOT].asString();
-        } else if (jobParams->advancedOpsJson.isMember(CUPS_MEDIA_SOURCE) &&
-                   jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].isString()) {
-            inputSlot = jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].asString();
-        }
-    }
+    std::string inputSlot = GetInputSlotFromAdvancedOps(jobParams->advancedOpsJson);
     if (!inputSlot.empty()) {
         mediaValue += "," + inputSlot;
     }
@@ -1160,17 +1150,7 @@ int PrintCupsClient::FillBorderlessOptions(JobParameters *jobParams, int num_opt
         value << "} media-bottom-margin=" << 0 << " media-left-margin=" << 0 << " media-right-margin=" << 0;
         value << " media-top-margin=" << 0 << " media-type=\"" << jobParams->mediaType << "\"";
 
-        std::string inputSlot;
-        if (!jobParams->advancedOpsJson.isNull()) {
-            // Check both PPD_INPUT_SLOT and media-source keys
-            if (jobParams->advancedOpsJson.isMember(PPD_INPUT_SLOT) &&
-                jobParams->advancedOpsJson[PPD_INPUT_SLOT].isString()) {
-                inputSlot = jobParams->advancedOpsJson[PPD_INPUT_SLOT].asString();
-            } else if (jobParams->advancedOpsJson.isMember(CUPS_MEDIA_SOURCE) &&
-                       jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].isString()) {
-                inputSlot = jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].asString();
-            }
-        }
+        std::string inputSlot = GetInputSlotFromAdvancedOps(jobParams->advancedOpsJson);
         if (!inputSlot.empty()) {
             value << " media-source=\"" << inputSlot << "\"";
         }
@@ -1329,6 +1309,19 @@ int PrintCupsClient::FillAdvancedOptions(JobParameters *jobParams, int num_optio
         }
     }
     return num_options;
+}
+
+std::string PrintCupsClient::GetInputSlotFromAdvancedOps(const Json::Value &advancedOpsJson)
+{
+    if (advancedOpsJson.isNull()) {
+        return "";
+    }
+    if (advancedOpsJson.isMember(PPD_INPUT_SLOT) && advancedOpsJson[PPD_INPUT_SLOT].isString()) {
+        return advancedOpsJson[PPD_INPUT_SLOT].asString();
+    } else if (advancedOpsJson.isMember(CUPS_MEDIA_SOURCE) && advancedOpsJson[CUPS_MEDIA_SOURCE].isString()) {
+        return advancedOpsJson[CUPS_MEDIA_SOURCE].asString();
+    }
+    return "";
 }
 
 int32_t PrintCupsClient::QueryAddedPrinterList(std::vector<std::string> &printerNameList)
