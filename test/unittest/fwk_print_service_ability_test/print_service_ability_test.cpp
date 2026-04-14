@@ -4882,5 +4882,29 @@ HWTEST_F(PrintServiceAbilityTest, UpdatePrinterInSystem_EmptyPrinterInfo, TestSi
     
     EXPECT_EQ(service->UpdatePrinterInSystem(info), E_PRINT_INVALID_PRINTER);
 }
+
+/**
+* @tc.name: StartSharedHostDiscovery_PermissionAndListenerTest
+* @tc.desc: Test StartSharedHostDiscovery behavior with no permission, invalid parameter, and normal case.
+* @tc.type: FUNC
+* @tc.require: StartSharedHostDiscovery should check permission and listener registration.
+*/
+HWTEST_F(PrintServiceAbilityTest, StartSharedHostDiscovery_PermissionAndListenerTest, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    auto mockHelper = std::make_shared<MockPrintServiceHelper>();
+    service->SetHelper(mockHelper);
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(false));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NO_PERMISSION);
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_INVALID_PARAMETER);
+    sptr<IPrintCallback> listener = new MockPrintCallbackProxy();
+    EXPECT_TRUE(DelayedSingleton<EventListenerMgr>::GetInstance()->RegisterPrinterListener(PRINTER_SHARED_HOST_DISCOVER,
+        listener));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NONE);
+    DelayedSingleton<EventListenerMgr>::GetInstance()->ClearAllListeners();
+}
 }  // namespace Print
 }  // namespace OHOS
