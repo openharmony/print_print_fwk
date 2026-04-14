@@ -4711,5 +4711,25 @@ HWTEST_F(PrintServiceAbilityTest, CheckNumberUpArgs_InvalidValue_ReturnFalse, Te
         EXPECT_FALSE(service->CheckNumberUpArgs(printJob)) << "Expected false for numberUp=" << value;
     }
 }
+
+/**
+* @tc.name: UpdatePrinterInSystem_EmptyPrinterInfo
+* @tc.desc: Test UpdatePrinterInSystem with empty printer info
+* @tc.type: FUNC
+* @tc.require: UpdatePrinterInSystem should return E_PRINT_INVALID_PRINTER when printer info is empty
+*/
+HWTEST_F(PrintServiceAbilityTest, UpdatePrinterInSystem_EmptyPrinterInfo, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    auto mockHelper = std::make_shared<MockPrintServiceHelper>();
+    service->helper_ = mockHelper;
+    
+    PrinterInfo info;
+    
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(true));
+    
+    EXPECT_EQ(service->UpdatePrinterInSystem(info), E_PRINT_INVALID_PRINTER);
+}
 }  // namespace Print
 }  // namespace OHOS

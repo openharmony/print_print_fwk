@@ -3535,9 +3535,16 @@ int32_t PrintServiceAbility::UpdatePrinterInSystem(const PrinterInfo &printerInf
     std::string extensionId = DelayedSingleton<PrintBMSHelper>::GetInstance()->QueryCallerBundleName();
     PRINT_HILOGD("extensionId = %{public}s", extensionId.c_str());
     std::string printerId = printerInfo.GetPrinterId();
-    if (printerId.find(PRINTER_ID_DELIMITER) == std::string::npos) {
-        printerId = PrintUtils::GetGlobalId(extensionId, printerId);
-    }
+    do {
+#ifdef HAVE_SMB_PRINTER
+        if (SmbPrinterDiscoverer::IsSmbPrinterId(printerId)) {
+            break;
+        }
+#endif // HAVE_SMB_PRINTER
+        if (printerId.find(PRINTER_ID_DELIMITER) == std::string::npos) {
+            printerId = PrintUtils::GetGlobalId(extensionId, printerId);
+        }
+    } while (false);
 
     PrinterInfo printer;
     if (!printSystemData_.QueryAddedPrinterInfoByPrinterId(printerId, printer)) {
