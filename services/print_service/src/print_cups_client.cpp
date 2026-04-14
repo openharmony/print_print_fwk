@@ -97,6 +97,7 @@ static const std::string CUPS_ROOT_DIR = "/data/service/el1/public/print_service
 static const std::string DEFAULT_MAKE_MODEL = "IPP Everywhere";
 static const std::string REMOTE_PRINTER_MAKE_MODEL = "Remote Printer";
 static const std::string LOCAL_RAW_PRINTER_PPD_NAME = "Local Raw Printer";
+static const std::string PPD_INPUT_SLOT = "InputSlot";
 static const std::string PRINTER_STATE_WAITING_COMPLETE = "cups-waiting-for-job-completed";
 static const std::string PRINTER_STATE_WIFI_NOT_CONFIGURED = "wifi-not-configured-report";
 static const std::string PRINTER_STATE_MEDIA_LOW_WARNING = "media-low-warning";
@@ -1097,16 +1098,31 @@ int PrintCupsClient::FillMediaOptions(JobParameters *jobParams, int num_options,
     if (jobParams->numberUp <= NUMBER_UP_MIN_VALUE) {
         num_options = cupsAddOption("fit-to-page", "true", num_options, options);
     }
-    if (!jobParams->mediaSize.empty()) {
-        num_options = cupsAddOption(CUPS_MEDIA, jobParams->mediaSize.c_str(), num_options, options);
-    } else {
-        num_options = cupsAddOption(CUPS_MEDIA, CUPS_MEDIA_A4, num_options, options);
-    }
     if (!jobParams->mediaType.empty()) {
         num_options = cupsAddOption(CUPS_MEDIA_TYPE, jobParams->mediaType.c_str(), num_options, options);
     } else {
         num_options = cupsAddOption(CUPS_MEDIA_TYPE, CUPS_MEDIA_TYPE_PLAIN, num_options, options);
     }
+
+    // Extend media value to media=mediaSize,mediaType,inputSlot
+    std::string mediaValue = jobParams->mediaSize.empty() ? CUPS_MEDIA_A4 : jobParams->mediaSize;
+    mediaValue += "," + (jobParams->mediaType.empty() ? CUPS_MEDIA_TYPE_PLAIN : jobParams->mediaType);
+    std::string inputSlot;
+    if (!jobParams->advancedOpsJson.isNull()) {
+        // Check both PPD_INPUT_SLOT and media-source keys
+        if (jobParams->advancedOpsJson.isMember(PPD_INPUT_SLOT) &&
+            jobParams->advancedOpsJson[PPD_INPUT_SLOT].isString()) {
+            inputSlot = jobParams->advancedOpsJson[PPD_INPUT_SLOT].asString();
+        } else if (jobParams->advancedOpsJson.isMember(CUPS_MEDIA_SOURCE) &&
+                   jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].isString()) {
+            inputSlot = jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].asString();
+        }
+    }
+    if (!inputSlot.empty()) {
+        mediaValue += "," + inputSlot;
+    }
+    num_options = cupsAddOption(CUPS_MEDIA, mediaValue.c_str(), num_options, options);
+
     return num_options;
 }
 
@@ -1142,7 +1158,23 @@ int PrintCupsClient::FillBorderlessOptions(JobParameters *jobParams, int num_opt
         std::stringstream value;
         value << "{media-size={x-dimension=" << meidaWidth << " y-dimension=" << mediaHeight;
         value << "} media-bottom-margin=" << 0 << " media-left-margin=" << 0 << " media-right-margin=" << 0;
-        value << " media-top-margin=" << 0 << " media-type=\"" << jobParams->mediaType << "\"}";
+        value << " media-top-margin=" << 0 << " media-type=\"" << jobParams->mediaType << "\"";
+
+        std::string inputSlot;
+        if (!jobParams->advancedOpsJson.isNull()) {
+            // Check both PPD_INPUT_SLOT and media-source keys
+            if (jobParams->advancedOpsJson.isMember(PPD_INPUT_SLOT) &&
+                jobParams->advancedOpsJson[PPD_INPUT_SLOT].isString()) {
+                inputSlot = jobParams->advancedOpsJson[PPD_INPUT_SLOT].asString();
+            } else if (jobParams->advancedOpsJson.isMember(CUPS_MEDIA_SOURCE) &&
+                       jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].isString()) {
+                inputSlot = jobParams->advancedOpsJson[CUPS_MEDIA_SOURCE].asString();
+            }
+        }
+        if (!inputSlot.empty()) {
+            value << " media-source=\"" << inputSlot << "\"";
+        }
+        value << "}";
         PRINT_HILOGD("value: %s", value.str().c_str());
         num_options = cupsAddOption("media-col", value.str().c_str(), num_options, options);
     } else {
@@ -1296,7 +1328,7 @@ int PrintCupsClient::FillAdvancedOptions(JobParameters *jobParams, int num_optio
         if (jobParams->advancedOpsJson.isMember(keyStr) || jobParams->advancedOpsJson[keyStr].isString()) {
             std::string valueStr = jobParams->advancedOpsJson[keyStr].asString();
             if (keyStr == CUPS_MEDIA_SOURCE) {
-                num_options = cupsAddOption("InputSlot", valueStr.c_str(), num_options, options);
+                num_options = cupsAddOption(PPD_INPUT_SLOT.c_str(), valueStr.c_str(), num_options, options);
                 continue;
             }
             num_options = cupsAddOption(keyStr.c_str(), valueStr.c_str(), num_options, options);
