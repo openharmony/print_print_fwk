@@ -355,6 +355,7 @@ int32_t PrintServiceAbility::Init()
     RefreshVirtualPrinter();
 #endif
     RefreshIpPrinter();
+    RefreshThirdDriverPrinter();
     StartDiscoverPrinter();
     PRINT_HILOGI("state_ is %{public}d.Init PrintServiceAbility success.", static_cast<int>(state_.load()));
     return E_PRINT_NONE;
@@ -1105,7 +1106,12 @@ int32_t PrintServiceAbility::AddPrinter(const std::string &printerName, const st
         return E_PRINT_NO_PERMISSION;
     }
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
-    
+
+    std::string callerBundleName = GetCallerBundleName();
+    if (callerBundleName != SPOOLER_BUNDLE_NAME) {
+        return AddPrinterByPrinterDriver(printerName, uri, ppdName, options, callerBundleName);
+    }
+
     char scheme[HTTP_MAX_URI] = {0};
     char username[HTTP_MAX_URI] = {0};
     char host[HTTP_MAX_URI] = {0};
@@ -1924,7 +1930,8 @@ bool PrintServiceAbility::UpdatePrinterCapability(const std::string &printerId, 
     PrinterInfo printerInfo(info);
     printerInfo.SetPrinterStatus(PRINTER_STATUS_IDLE);
     printerInfo.SetPrinterId(printerId);
-    if (!printSystemData_.IsPrinterAdded(printerId)) {
+    if (!printSystemData_.IsPrinterAdded(printerId) || PrintUtil::startsWith(printerId, VENDOR_MANAGER_PREFIX +
+        VENDOR_CUSTOM_DRIVER)) {
         BuildPrinterPreference(printerInfo);
         printSystemData_.InsertAddedPrinter(printerId, printerInfo);
         SendPrinterEventChangeEvent(PRINTER_EVENT_ADDED, printerInfo, true);
@@ -4478,30 +4485,30 @@ std::string PrintServiceAbility::RenamePrinterWhenAdded(const PrinterInfo &info)
 {
     PRINT_HILOGI("RenamePrinterWhenAdded start.");
     static uint32_t repeatNameLimit = 10;
-    if (printSystemData_.IsPrinterAdded(info.GetPrinterId())) {  // 相同ID已添加，沿用之前的名字，更新信息
-        return info.GetPrinterName();
+    // 相同ID已添加，沿用之前的名字，更新信息
+    PrinterInfo existingInfo;
+    if (printSystemData_.QueryAddedPrinterInfoByPrinterId(info.GetPrinterId(), existingInfo)) {
+        PRINT_HILOGW("printerId exist, update printer.");
+        return existingInfo.GetPrinterName();
     }
     std::vector<std::string> printerNameList;
     printSystemData_.GetAddedPrinterListFromSystemData(printerNameList);
-    uint32_t nameIndex = 1;
-    auto printerName = info.GetPrinterName();
-    auto iter = printerNameList.begin();
-    auto end = printerNameList.end();
-    do {
-        iter = std::find(iter, end, printerName);
-        if (iter == end) {
+    std::set<std::string> usedStandardizedNames;
+    for (const auto &name : printerNameList) {
+        usedStandardizedNames.insert(PrintUtil::StandardizePrinterName(name));
+    }
+    std::string displayName = info.GetPrinterName();
+    for (uint32_t nameIndex = 1; nameIndex <= repeatNameLimit; ++nameIndex) {
+        if (usedStandardizedNames.find(PrintUtil::StandardizePrinterName(displayName)) ==
+            usedStandardizedNames.end()) {
             break;
         }
-        printerName = info.GetPrinterName();
-        printerName += " ";
-        printerName += std::to_string(nameIndex);
         if (nameIndex == repeatNameLimit) {
             break;
         }
-        ++nameIndex;
-        iter = printerNameList.begin();
-    } while (iter != end);
-    return printerName;
+        displayName = info.GetPrinterName() + " " + std::to_string(nameIndex);
+    }
+    return displayName;
 }
 
 std::shared_ptr<PrinterInfo> PrintServiceAbility::QueryDiscoveredPrinterInfoById(const std::string &printerId)
@@ -4748,34 +4755,108 @@ int32_t PrintServiceAbility::ConnectUsbPrinter(const std::string &printerId)
         PRINT_HILOGE("AddPrinterToCups error = %{public}d.", ret);
         return ret;
     }
-    PrinterCapability printerCaps;
     std::string ppdName;
     QueryPPDInformation(make, ppdName);
-    ret = DelayedSingleton<PrintCupsClient>::GetInstance()->QueryPrinterCapabilityFromPPD(
-        printerInfo->GetPrinterName(), printerCaps, ppdName);
+    ret = SetPrinterCapabilityAndRegister(printerInfo->GetPrinterName(), ppdName, printerId, printerInfo);
     if (ret != E_PRINT_NONE) {
-        PRINT_HILOGE("QueryPrinterCapabilityFromPPD error = %{public}d.", ret);
+        PRINT_HILOGE("SetPrinterCapabilityAndRegister error = %{public}d.", ret);
+        return ret;
+    }
+    SendPrinterDiscoverEvent(PRINTER_UPDATE_CAP, *printerInfo);
+#endif  // CUPS_ENABLE
+    PRINT_HILOGI("ConnectUsbPrinter end");
+    return E_PRINT_NONE;
+}
+
+std::string PrintServiceAbility::GetCallerBundleName()
+{
+    return DelayedSingleton<PrintBMSHelper>::GetInstance()->QueryCallerBundleName();
+}
+
+int32_t PrintServiceAbility::AddPrinterByPrinterDriver(const std::string &printerName, const std::string &uri,
+    const std::string &ppdName, const std::string &options, const std::string &bundleName)
+{
+    PRINT_HILOGI("[Printer: %{public}s] AddPrinterByPrinterDriver start, ppdName: %{public}s.",
+        printerName.c_str(), ppdName.c_str());
+    if (printerName.length() > MAX_DRIVER_PRINTER_NAME_LENGTH || !PrintUtil::ValidatePrinterName(printerName.c_str())) {
+        PRINT_HILOGW("printerName exceeds max length");
+        return E_PRINT_INVALID_PARAMETER;
+    }
+
+    std::string customDriverPrefix = VENDOR_MANAGER_PREFIX + VENDOR_CUSTOM_DRIVER + RAW_GLOBAL_ID_DELIMITER;
+    std::string standardizedName = PrintUtil::StandardizePrinterName(printerName);
+    std::string printerId = customDriverPrefix + bundleName + GLOBAL_ID_DELIMITER + standardizedName;
+    auto printerInfo = std::make_shared<PrinterInfo>();
+    printerInfo->SetPrinterId(printerId);
+    printerInfo->SetPrinterName(printerName);
+    printerInfo->SetUri(uri);
+
+    std::string finalPrinterName = RenamePrinterWhenAdded(*printerInfo);
+    printerInfo->SetPrinterName(finalPrinterName);
+    std::string finalPpdName = ppdName;
+
+    if (finalPpdName.empty() || finalPpdName == DEFAULT_PPD_NAME) {
+        finalPpdName = "";
+        printerInfo->SetPrinterMake("");
+        PrinterCapability printerCaps;
+        printerInfo->SetCapability(printerCaps);
+    } else if (!IsPpdNameValid(finalPpdName)) {
+        PRINT_HILOGW("PpdName is not valid!");
+        return E_PRINT_INVALID_PARAMETER;
+    }
+
+    if (!DoAddPrinterToCupsEnable(uri, finalPrinterName, printerInfo, finalPpdName, "")) {
+        PRINT_HILOGW("AddPrinterToCups error!");
+        return E_PRINT_GENERIC_FAILURE;
+    }
+
+    return SetPrinterCapabilityAndRegister(finalPrinterName, finalPpdName, printerId, printerInfo);
+}
+
+int32_t PrintServiceAbility::SetPrinterCapabilityAndRegister(const std::string &printerName,
+    const std::string &ppdName, const std::string &printerId, std::shared_ptr<PrinterInfo> printerInfo)
+{
+    auto printCupsClient = DelayedSingleton<PrintCupsClient>::GetInstance();
+    PrinterCapability printerCaps;
+    int32_t ret = QueryPrinterCapabilityFromPPD(printerName, printerCaps, ppdName);
+    if (ret != E_PRINT_NONE) {
+        PRINT_HILOGW("QueryPrinterCapabilityFromPPD error = %{public}d.", ret);
         return ret;
     }
     printerInfo->SetCapability(printerCaps);
-    std::string ppdHashCode = DelayedSingleton<PrintCupsClient>::GetInstance()->GetPpdHashCode(ppdName);
+    std::string printerMake = printerInfo->GetPrinterMake();
+    if (printerMake.empty() && printerCaps.HasOption()) {
+        std::string optionStr = printerCaps.GetOption();
+        Json::Value optionJson;
+        if (!PrintJsonUtil::Parse(optionStr, optionJson)) {
+            PRINT_HILOGE("Failed to parse option JSON");
+            return E_PRINT_GENERIC_FAILURE;
+        }
+
+        std::string maker;
+        if (!PrintJsonUtil::FindJsonStringMember(optionJson, "make", maker)) {
+            PRINT_HILOGE("Failed to find make");
+            return E_PRINT_GENERIC_FAILURE;
+        }
+        printerInfo->SetPrinterMake(maker);
+    }
+
+    std::string ppdHashCode = printCupsClient->GetPpdHashCode(ppdName);
     printerInfo->SetPpdHashCode(ppdHashCode);
 
     PpdInfo ppdInfo;
-    if (!DelayedSingleton<PrintCupsClient>::GetInstance()->QueryInfoByPpdName(ppdName, ppdInfo)) {
+    if (!printCupsClient->QueryInfoByPpdName(ppdName, ppdInfo)) {
         PRINT_HILOGW("cannot Find PPDFile, Reset to auto");
         ppdInfo.SetPpdInfo("auto", "auto", ppdName);
     }
     printerInfo->SetSelectedDriver(ppdInfo);
-    
+
     UpdatePrinterCapability(printerId, *printerInfo);
 
     printerInfo->SetPrinterState(PRINTER_UPDATE_CAP);
     SendPrinterEvent(*printerInfo);
-    SendPrinterDiscoverEvent(PRINTER_UPDATE_CAP, *printerInfo);
     printSystemData_.SavePrinterFile(printerId);
-#endif  // CUPS_ENABLE
-    PRINT_HILOGI("ConnectUsbPrinter end");
+    PRINT_HILOGI("SetPrinterCapabilityAndRegister end.");
     return E_PRINT_NONE;
 }
 
@@ -4847,6 +4928,7 @@ bool PrintServiceAbility::RefreshPrinterStatusOnSwitchUser()
     RefreshVirtualPrinter();
 #endif
     RefreshIpPrinter();
+    RefreshThirdDriverPrinter();
     return true;
 }
 #endif  // ENTERPRISE_ENABLE
@@ -5557,4 +5639,30 @@ void PrintServiceAbility::RefreshIpPrinter()
         }
     }
 }
+
+void PrintServiceAbility::RefreshThirdDriverPrinter()
+{
+    std::vector<std::string> printerIdList = printSystemData_.QueryAddedPrinterIdList();
+    for (auto& printerId : printerIdList) {
+        PrinterInfo printerInfo;
+        if (printSystemData_.QueryAddedPrinterInfoByPrinterId(printerId, printerInfo) &&
+            PrintUtil::startsWith(printerId, VENDOR_MANAGER_PREFIX + VENDOR_CUSTOM_DRIVER)) {
+            PRINT_HILOGI("third driver printer added, Set status to IDLE.");
+            UpdatePrinterStatus(printerInfo, PRINTER_STATUS_IDLE);
+        }
+    }
+}
+
+bool PrintServiceAbility::IsPpdNameValid(const std::string &ppdName)
+{
+    return PrintUtils::IsPathValid(DelayedSingleton<PrintCupsClient>::GetInstance()->GetCurCupsModelDir() + ppdName);
+}
+
+int32_t PrintServiceAbility::QueryPrinterCapabilityFromPPD(const std::string &name,
+    PrinterCapability &printerCaps, const std::string &ppdName)
+{
+    return DelayedSingleton<PrintCupsClient>::GetInstance()->QueryPrinterCapabilityFromPPD(name, printerCaps,
+        ppdName);
+}
+
 }  // namespace OHOS::Print
