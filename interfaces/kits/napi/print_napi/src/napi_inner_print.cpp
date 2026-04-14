@@ -1400,7 +1400,7 @@ napi_value NapiInnerPrint::AddPrinter(napi_env env, napi_callback_info info)
         PRINT_ASSERT_BASE(env, valueType == napi_string, "uri is not a string", napi_string_expected);
         context->fileUri = NapiPrintUtils::GetStringFromValueUtf8(env, argv[NapiPrintUtils::INDEX_ONE]);
 
-        context->type = "auto";
+        context->type = "";
         if (argc > NapiPrintUtils::ARGC_TWO) {
             PRINT_CALL_BASE(env, napi_typeof(env, argv[NapiPrintUtils::INDEX_TWO], &valueType), napi_invalid_arg);
             if (valueType == napi_string) {
