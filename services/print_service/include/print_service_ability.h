@@ -251,7 +251,12 @@ private:
     void UpdatePrintJobOptionWithPrinterPreferences(Json::Value &options, PrinterInfo &printerInfo);
     void UpdatePageSizeNameWithPrinterInfo(PrinterInfo &printerInfo, PrintPageSize &pageSize);
     Json::Value ConvertModifiedPreferencesToJson(PrinterPreferences &preferences);
+    std::string GetCallerBundleName();
     int32_t ConnectUsbPrinter(const std::string &printerId);
+    int32_t AddPrinterByPrinterDriver(const std::string &printerName, const std::string &uri,
+        const std::string &ppdName, const std::string &options, const std::string &bundleName);
+    int32_t SetPrinterCapabilityAndRegister(const std::string &printerName, const std::string &ppdName,
+        const std::string &printerId, std::shared_ptr<PrinterInfo> printerInfo);
     void RefreshPrinterInfoByPpd();
     void RefreshEprinterErrorCapability();
     void UpdatePrinterStatus(PrinterInfo &printerInfo, PrinterStatus printerStatus);
@@ -281,6 +286,10 @@ private:
     void DecrementPrintCounterByPcSettings();
     bool CheckStartExtensionPermission();
     void RefreshIpPrinter();
+    void RefreshThirdDriverPrinter();
+    bool IsPpdNameValid(const std::string &ppdName);
+    int32_t QueryPrinterCapabilityFromPPD(const std::string &name, PrinterCapability &printerCaps,
+        const std::string &ppdName);
     int32_t InitServiceHelper();
 
 public:
