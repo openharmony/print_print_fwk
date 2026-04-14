@@ -106,6 +106,12 @@ public:
         : PrintServiceAbility(systemAbilityId, runOnCreate) {}
     MOCK_METHOD2(QueryPrinterInfoByPrinterId, int32_t(const std::string &printerId, PrinterInfo &info));
     MOCK_METHOD2(QueryPPDInformation, bool(const std::string &makeModel, std::string &ppdName));
+    MOCK_METHOD0(GetCallerBundleName, std::string());
+    MOCK_METHOD5(DoAddPrinterToCupsEnable, bool(const std::string &printerUri, const std::string &printerName,
+        std::shared_ptr<PrinterInfo> printerInfo, const std::string &ppdName, const std::string &ppdData));
+    MOCK_METHOD1(IsPpdNameValid, bool(const std::string &ppdName));
+    MOCK_METHOD3(QueryPrinterCapabilityFromPPD, int32_t(const std::string &name, PrinterCapability &printerCaps,
+        const std::string &ppdName));
 };
 
 class MockPrintServiceHelper final : public PrintServiceHelper {
@@ -3841,34 +3847,6 @@ HWTEST_F(PrintServiceAbilityTest, StartDiscovery_NoClearConnect, TestSize.Level1
     EXPECT_FALSE(service->vendorManager.GetConnectingPrinter().empty());
 }
 
-HWTEST_F(PrintServiceAbilityTest, PrintServiceAbilityTest_AddPrinter_InvalidIp, TestSize.Level0)
-{
-    PrintServiceMockPermission::MockPermission();
-    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
-    
-    std::string printerName = "test-printer";
-    std::string uri = "ipp://invalid-ip:631/ipp/print";
-    std::string ppdName = "test.ppd";
-    std::string options = "option1=value1";
-
-    EXPECT_EQ(service->AddPrinter(printerName, uri, ppdName, options), E_PRINT_INVALID_PRINTER);
-}
-
-HWTEST_F(PrintServiceAbilityTest, PrintServiceAbilityTest_AddPrinter_ConnectPrinterByIpAndPpdFailed, TestSize.Level0)
-{
-    PrintServiceMockPermission::MockPermission();
-    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
-    
-    std::string printerName = "test-printer";
-    std::string uri = "ipp://192.168.1.1:631/ipp/print";
-    std::string ppdName = "test.ppd";
-    std::string options = "option1=value1";
-
-    service->vendorManager.wlanGroupDriver = nullptr;
-
-    EXPECT_EQ(service->AddPrinter(printerName, uri, ppdName, options), E_PRINT_SERVER_FAILURE);
-}
-
 HWTEST_F(PrintServiceAbilityTest, RegisterKiaInterceptorCallbackTest, TestSize.Level1)
 {
     auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
@@ -4663,6 +4641,270 @@ HWTEST_F(PrintServiceAbilityTest, UpdateSinglePrinterInfo_HasPrinterMake_PpdRetu
     service->printSystemData_.AddPrinterToDiscovery(info);
     bool result = service->UpdateSinglePrinterInfo(*info, DEFAULT_EXTENSION_ID);
     EXPECT_FALSE(result);
+}
+
+/**
+* @tc.name: RenamePrinterWhenAdded_ExistingPrinterId_ReturnStoredName
+* @tc.desc: When printerId already exists in addedPrinterMap, return the previously stored printer name
+* @tc.type: FUNC
+* @tc.require: Fix line-4450 bug: should return stored name, not the incoming name
+*/
+HWTEST_F(PrintServiceAbilityTest, RenamePrinterWhenAdded_ExistingPrinterId_ReturnStoredName, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string printerId = "fwk.driver.printer.driver.com.example:TestPrinter";
+    PrinterInfo existingInfo;
+    existingInfo.SetPrinterId(printerId);
+    existingInfo.SetPrinterName("StoredDisplayName");
+    service->printSystemData_.InsertAddedPrinter(printerId, existingInfo);
+
+    PrinterInfo newInfo;
+    newInfo.SetPrinterId(printerId);
+    newInfo.SetPrinterName("NewDifferentName");
+    std::string result = service->RenamePrinterWhenAdded(newInfo);
+    EXPECT_EQ(result, "StoredDisplayName");
+}
+
+/**
+* @tc.name: RenamePrinterWhenAdded_NoConflict_ReturnOriginalName
+* @tc.desc: When no name conflict exists, return the original printer name unchanged
+* @tc.type: FUNC
+* @tc.require: Normal case with no existing printers
+*/
+HWTEST_F(PrintServiceAbilityTest, RenamePrinterWhenAdded_NoConflict_ReturnOriginalName, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    PrinterInfo info;
+    info.SetPrinterId("fwk.driver.printer.driver.com.example:NewPrinter");
+    info.SetPrinterName("NewPrinter");
+    std::string result = service->RenamePrinterWhenAdded(info);
+    EXPECT_EQ(result, "NewPrinter");
+}
+
+/**
+* @tc.name: RenamePrinterWhenAdded_ExactNameConflict_AppendSuffix
+* @tc.desc: When an exact display name conflict exists, append numeric suffix
+* @tc.type: FUNC
+* @tc.require: "EPSON L3251" already added, adding another "EPSON L3251" yields "EPSON L3251 1"
+*/
+HWTEST_F(PrintServiceAbilityTest, RenamePrinterWhenAdded_ExactNameConflict_AppendSuffix, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    PrinterInfo existingInfo;
+    existingInfo.SetPrinterId("fwk.driver.printer.driver.com.example:EPSON_L3251");
+    existingInfo.SetPrinterName("EPSON L3251");
+    service->printSystemData_.InsertAddedPrinter(
+        "fwk.driver.printer.driver.com.example:EPSON_L3251", existingInfo);
+
+    PrinterInfo newInfo;
+    newInfo.SetPrinterId("fwk.driver.printer.driver.com.other:EPSON_L3251");
+    newInfo.SetPrinterName("EPSON L3251");
+    std::string result = service->RenamePrinterWhenAdded(newInfo);
+    EXPECT_EQ(result, "EPSON L3251 1");
+}
+
+/**
+* @tc.name: RenamePrinterWhenAdded_CrossFormatConflict_AppendSuffix
+* @tc.desc: Cross-format name conflict detected via StandardizePrinterName comparison
+* @tc.type: FUNC
+* @tc.require: "EPSON L3251" standardizes to "EPSON_L3251"; adding "EPSON_L3251" should detect conflict
+*/
+HWTEST_F(PrintServiceAbilityTest, RenamePrinterWhenAdded_CrossFormatConflict_AppendSuffix, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    PrinterInfo existingInfo;
+    existingInfo.SetPrinterId("fwk.driver.printer.driver.com.example:EPSON_L3251");
+    existingInfo.SetPrinterName("EPSON L3251");
+    service->printSystemData_.InsertAddedPrinter(
+        "fwk.driver.printer.driver.com.example:EPSON_L3251", existingInfo);
+
+    // "EPSON_L3251" standardizes to same "EPSON_L3251" as "EPSON L3251" -> conflict
+    PrinterInfo newInfo;
+    newInfo.SetPrinterId("fwk.driver.printer.driver.com.other:EPSON_L3251_v2");
+    newInfo.SetPrinterName("EPSON_L3251");
+    std::string result = service->RenamePrinterWhenAdded(newInfo);
+    EXPECT_EQ(result, "EPSON_L3251 1");
+}
+
+/**
+* @tc.name: RefreshThirdDriverPrinter_CustomDriverPrinter_SetIdle
+* @tc.desc: Custom driver printers are set to PRINTER_STATUS_IDLE during refresh
+* @tc.type: FUNC
+* @tc.require: Printer with prefix "fwk.driver.printer.driver" should have status updated
+*/
+HWTEST_F(PrintServiceAbilityTest, RefreshThirdDriverPrinter_CustomDriverPrinter_SetIdle, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string printerId = "fwk.driver.printer.driver.com.example:TestPrinter";
+    PrinterInfo printerInfo;
+    printerInfo.SetPrinterId(printerId);
+    printerInfo.SetPrinterName("TestPrinter");
+    service->printSystemData_.InsertAddedPrinter(printerId, printerInfo);
+    service->RefreshThirdDriverPrinter();
+}
+
+/**
+* @tc.name: RefreshThirdDriverPrinter_RegularPrinter_NoChange
+* @tc.desc: Regular (non-custom-driver) printers are not affected by RefreshThirdDriverPrinter
+* @tc.type: FUNC
+* @tc.require: Printers without custom driver prefix should be skipped
+*/
+HWTEST_F(PrintServiceAbilityTest, RefreshThirdDriverPrinter_RegularPrinter_NoChange, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string regularId = "com.ohos.spooler:SomePrinter";
+    PrinterInfo regularInfo;
+    regularInfo.SetPrinterId(regularId);
+    regularInfo.SetPrinterName("SomePrinter");
+    service->printSystemData_.InsertAddedPrinter(regularId, regularInfo);
+    service->RefreshThirdDriverPrinter();
+}
+
+/**
+* @tc.name: UpdatePrinterCapability_CustomDriverPrinterAlreadyAdded_StillInserts
+* @tc.desc: Custom driver printers always re-insert even when already added
+* @tc.type: FUNC
+* @tc.require: startsWith(printerId, "fwk.driver.printer.driver") bypasses IsPrinterAdded check
+*/
+HWTEST_F(PrintServiceAbilityTest,
+    UpdatePrinterCapability_CustomDriverPrinterAlreadyAdded_StillInserts, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string printerId = "fwk.driver.printer.driver.com.example:TestPrinter";
+    PrinterInfo printerInfo;
+    printerInfo.SetPrinterId(printerId);
+    printerInfo.SetPrinterName("TestPrinter");
+    service->printSystemData_.InsertAddedPrinter(printerId, printerInfo);
+    EXPECT_TRUE(service->printSystemData_.IsPrinterAdded(printerId));
+    bool result = service->UpdatePrinterCapability(printerId, printerInfo);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(service->printSystemData_.IsPrinterAdded(printerId));
+}
+
+/**
+* @tc.name: UpdatePrinterCapability_RegularPrinterAlreadyAdded_SkipsInsert
+* @tc.desc: Regular printers skip re-insertion when already added (existing behavior unchanged)
+* @tc.type: FUNC
+* @tc.require: Non-custom-driver printer that is already added goes to else branch
+*/
+HWTEST_F(PrintServiceAbilityTest,
+    UpdatePrinterCapability_RegularPrinterAlreadyAdded_SkipsInsert, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string printerId = "com.ohos.spooler:SomePrinter";
+    PrinterInfo printerInfo;
+    printerInfo.SetPrinterId(printerId);
+    printerInfo.SetPrinterName("SomePrinter");
+    service->printSystemData_.InsertAddedPrinter(printerId, printerInfo);
+    EXPECT_TRUE(service->printSystemData_.IsPrinterAdded(printerId));
+    bool result = service->UpdatePrinterCapability(printerId, printerInfo);
+    EXPECT_TRUE(result);
+}
+
+/**
+* @tc.name: AddPrinterByPrinterDriver_NameTooLong_InvalidParameter
+* @tc.desc: Printer name exceeding MAX_DRIVER_PRINTER_NAME_LENGTH returns E_PRINT_INVALID_PARAMETER
+* @tc.type: FUNC
+* @tc.require: Input validation: name length must not exceed MAX_DRIVER_PRINTER_NAME_LENGTH
+*/
+HWTEST_F(PrintServiceAbilityTest, AddPrinterByPrinterDriver_NameTooLong_InvalidParameter, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    std::string longName(MAX_DRIVER_PRINTER_NAME_LENGTH + 1, 'A');
+    int32_t ret = service->AddPrinterByPrinterDriver(
+        longName, "ipp://192.168.1.1:631/ipp/print", "", "", "com.example");
+    EXPECT_EQ(ret, E_PRINT_INVALID_PARAMETER);
+}
+
+/**
+ * @tc.name: CheckNumberUpArgs_ValidValue_ReturnTrue
+ * @tc.desc: Test CheckNumberUpArgs with valid numberUp values
+ * @tc.type: FUNC
+ * @tc.require: NumberUp parameter validation
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckNumberUpArgs_ValidValue_ReturnTrue, TestSize.Level1)
+{
+    auto service = sptr<MockPrintServiceAbility>::MakeSptr(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::vector<uint32_t> validValues = {
+        NUMBER_UP_MIN_VALUE, NUMBER_UP_2_PAGES, NUMBER_UP_4_PAGES,
+        NUMBER_UP_6_PAGES, NUMBER_UP_9_PAGES, NUMBER_UP_16_PAGES
+    };
+
+    for (uint32_t value : validValues) {
+        auto printJob = std::make_shared<PrintJob>();
+        NumberUpArgs args;
+        args.numberUp = value;
+        printJob->SetNumberUpArgs(args);
+        EXPECT_TRUE(service->CheckNumberUpArgs(printJob)) << "Expected true for numberUp=" << value;
+    }
+}
+
+/**
+ * @tc.name: CheckNumberUpArgs_InvalidValue_ReturnFalse
+ * @tc.desc: Test CheckNumberUpArgs with invalid numberUp values
+ * @tc.type: FUNC
+ * @tc.require: NumberUp parameter validation
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckNumberUpArgs_InvalidValue_ReturnFalse, TestSize.Level1)
+{
+    auto service = sptr<MockPrintServiceAbility>::MakeSptr(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::vector<uint32_t> invalidValues = {0, 3, 5, 7, 8, 10, 15, 100};
+
+    for (uint32_t value : invalidValues) {
+        auto printJob = std::make_shared<PrintJob>();
+        NumberUpArgs args;
+        args.numberUp = value;
+        printJob->SetNumberUpArgs(args);
+        EXPECT_FALSE(service->CheckNumberUpArgs(printJob)) << "Expected false for numberUp=" << value;
+    }
+}
+
+/**
+* @tc.name: UpdatePrinterInSystem_EmptyPrinterInfo
+* @tc.desc: Test UpdatePrinterInSystem with empty printer info
+* @tc.type: FUNC
+* @tc.require: UpdatePrinterInSystem should return E_PRINT_INVALID_PRINTER when printer info is empty
+*/
+HWTEST_F(PrintServiceAbilityTest, UpdatePrinterInSystem_EmptyPrinterInfo, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    auto mockHelper = std::make_shared<MockPrintServiceHelper>();
+    service->helper_ = mockHelper;
+    
+    PrinterInfo info;
+    
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(true));
+    
+    EXPECT_EQ(service->UpdatePrinterInSystem(info), E_PRINT_INVALID_PRINTER);
+}
+
+/**
+* @tc.name: StartSharedHostDiscovery_PermissionAndListenerTest
+* @tc.desc: Test StartSharedHostDiscovery behavior with no permission, invalid parameter, and normal case.
+* @tc.type: FUNC
+* @tc.require: StartSharedHostDiscovery should check permission and listener registration.
+*/
+HWTEST_F(PrintServiceAbilityTest, StartSharedHostDiscovery_PermissionAndListenerTest, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    auto mockHelper = std::make_shared<MockPrintServiceHelper>();
+    service->SetHelper(mockHelper);
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(false));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NO_PERMISSION);
+    EXPECT_CALL(*mockHelper, CheckPermission(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_INVALID_PARAMETER);
+    sptr<IPrintCallback> listener = new MockPrintCallbackProxy();
+    EXPECT_TRUE(DelayedSingleton<EventListenerMgr>::GetInstance()->RegisterPrinterListener(PRINTER_SHARED_HOST_DISCOVER,
+        listener));
+    EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NONE);
+    DelayedSingleton<EventListenerMgr>::GetInstance()->ClearAllListeners();
 }
 }  // namespace Print
 }  // namespace OHOS

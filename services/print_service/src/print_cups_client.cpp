@@ -1204,17 +1204,11 @@ int PrintCupsClient::FillNumberUpOptions(JobParameters *jobParams, int num_optio
         PRINT_HILOGE("FillNumberUpOptions Params is nullptr");
         return num_options;
     }
-    // N-Up (multiple pages per sheet)
-    if (jobParams->numberUp > NUMBER_UP_MIN_VALUE) {
-        num_options = cupsAddIntegerOption("number-up", jobParams->numberUp, num_options, options);
-        std::string layoutStr = GetNumberUpLayoutString(jobParams->numberUpLayout);
-        num_options = cupsAddOption("number-up-layout", layoutStr.c_str(), num_options, options);
-        PRINT_HILOGI("Added CUPS option: number-up=%{public}d, number-up-layout=%{public}s",
-            jobParams->numberUp, layoutStr.c_str());
-    } else {
-        PRINT_HILOGI("number-up disabled (value=%{public}d, need > %{public}d to enable)",
-            jobParams->numberUp, NUMBER_UP_MIN_VALUE);
-    }
+    num_options = cupsAddIntegerOption("number-up", jobParams->numberUp, num_options, options);
+    std::string layoutStr = GetNumberUpLayoutString(jobParams->numberUpLayout);
+    num_options = cupsAddOption("number-up-layout", layoutStr.c_str(), num_options, options);
+    PRINT_HILOGI("Added CUPS option: number-up=%{public}d, number-up-layout=%{public}s",
+        jobParams->numberUp, layoutStr.c_str());
     return num_options;
 }
 

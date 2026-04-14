@@ -130,6 +130,7 @@ public:
         const PrintJob &printJob, std::vector<std::string> &conflictingOptions) override;
     int32_t GetPrinterDefaultPreferences(const std::string &printerId, PrinterPreferences &defaultPreferences) override;
     int32_t GetSharedHosts(std::vector<PrintSharedHost> &sharedHosts) override;
+    int32_t StartSharedHostDiscovery() override;
     int32_t AuthSmbDevice(const PrintSharedHost& sharedHost, const std::string &userName, char *userPasswd,
         std::vector<PrinterInfo>& printerInfos) override;
 
@@ -251,7 +252,12 @@ private:
     void UpdatePrintJobOptionWithPrinterPreferences(Json::Value &options, PrinterInfo &printerInfo);
     void UpdatePageSizeNameWithPrinterInfo(PrinterInfo &printerInfo, PrintPageSize &pageSize);
     Json::Value ConvertModifiedPreferencesToJson(PrinterPreferences &preferences);
+    std::string GetCallerBundleName();
     int32_t ConnectUsbPrinter(const std::string &printerId);
+    int32_t AddPrinterByPrinterDriver(const std::string &printerName, const std::string &uri,
+        const std::string &ppdName, const std::string &options, const std::string &bundleName);
+    int32_t SetPrinterCapabilityAndRegister(const std::string &printerName, const std::string &ppdName,
+        const std::string &printerId, std::shared_ptr<PrinterInfo> printerInfo);
     void RefreshPrinterInfoByPpd();
     void RefreshEprinterErrorCapability();
     void UpdatePrinterStatus(PrinterInfo &printerInfo, PrinterStatus printerStatus);
@@ -281,6 +287,10 @@ private:
     void DecrementPrintCounterByPcSettings();
     bool CheckStartExtensionPermission();
     void RefreshIpPrinter();
+    void RefreshThirdDriverPrinter();
+    bool IsPpdNameValid(const std::string &ppdName);
+    int32_t QueryPrinterCapabilityFromPPD(const std::string &name, PrinterCapability &printerCaps,
+        const std::string &ppdName);
     int32_t InitServiceHelper();
 
 public:
@@ -307,6 +317,9 @@ private:
     int32_t StartExtensionDiscovery(const std::vector<std::string> &extensionIds);
     void PostDiscoveryTask(const std::string &extensionId);
     int32_t StartPrintJobInternal(const std::shared_ptr<PrintJob> &printJob);
+    bool CheckNumberUpArgs(const std::shared_ptr<PrintJob> &printJob);
+    int32_t StartEprintJobInternal(const std::shared_ptr<PrintJob> &printJob);
+    int32_t StartCupsPrintJob(const std::shared_ptr<PrintJob> &printJob);
     bool CheckDeviceAndAccountPermission(const std::shared_ptr<PrintJob> &printJob);
     int32_t QueryVendorPrinterInfo(const std::string &globalPrinterId, PrinterInfo &info);
     int32_t TryConnectPrinterByIp(const std::string &params);
@@ -363,6 +376,7 @@ private:
     bool discoveryCallerMonitorThread = false;
 
     std::atomic<bool> isMonitoring_{false};
+    std::atomic<bool> isSmbHostDiscovering_{false};
 
 #ifdef ENTERPRISE_ENABLE
 private:
