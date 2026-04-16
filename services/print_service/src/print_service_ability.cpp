@@ -3855,22 +3855,9 @@ bool PrintServiceAbility::AddVendorPrinterToDiscovery(const std::string &globalV
 
     if (printSystemData_.IsPrinterAdded(printerInfo->GetPrinterId()) &&
         !printSystemData_.CheckPrinterBusy(printerInfo->GetPrinterId())) {
-<<<<<<< Updated upstream
-        if (CheckPrinterUriDifferent(printerInfo) &&
-            UpdateAddedPrinterInCups(printerInfo->GetPrinterId(), printerInfo->GetUri())) {
-            printSystemData_.UpdatePrinterUri(printerInfo);
-            printSystemData_.SavePrinterFile(printerInfo->GetPrinterId());
-        }
+        SyncAddedPrinterUri(printerInfo);
         PrinterInfo printer = *printerInfo;
         if (!printSystemData_.QueryAddedPrinterInfoByPrinterId(globalPrinterId, printer)) {
-=======
-        SyncAddedPrinterUri(printerInfo);
-        PrinterInfo printer;
-        if (printSystemData_.QueryAddedPrinterInfoByPrinterId(globalPrinterId, printer) &&
-            !DelayedSingleton<PrintCupsClient>::GetInstance()->IsIpAddress(printer.GetPrinterName().c_str())) {
-            *printerInfo = printer;
-        } else {
->>>>>>> Stashed changes
             PRINT_HILOGW("cannot update printer info by added printer info");
         }
         UpdatePrinterStatus(printer, PRINTER_STATUS_IDLE);
