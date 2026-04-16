@@ -133,6 +133,11 @@ public:
     int32_t StartSharedHostDiscovery() override;
     int32_t AuthSmbDevice(const PrintSharedHost& sharedHost, const std::string &userName, char *userPasswd,
         std::vector<PrinterInfo>& printerInfos) override;
+    
+    int32_t RegisterWatermarkCallback(const sptr<IWatermarkCallback> &callback) override;
+    int32_t UnregisterWatermarkCallback() override;
+    int32_t NotifyWatermarkComplete(const std::string &jobId, int32_t result) override;
+    int32_t RegisterKiaInterceptorCallback(const sptr<IKiaInterceptorCallback> &callback) override;
 
     void DelayEnterLowPowerMode();
     void ExitLowPowerMode();
@@ -151,10 +156,6 @@ public:
         const std::string &ppdName);
     int32_t ReportBannedEvent(std::string option);
     bool IsDisablePrint();
-    int32_t RegisterWatermarkCallback(const sptr<IWatermarkCallback> &callback) override;
-    int32_t UnregisterWatermarkCallback() override;
-    int32_t NotifyWatermarkComplete(const std::string &jobId, int32_t result) override;
-    int32_t RegisterKiaInterceptorCallback(const sptr<IKiaInterceptorCallback> &callback) override;
     virtual bool OpenCacheFileFd(const std::string &jobId, std::vector<uint32_t> &fdList, int32_t openMode = O_RDONLY);
     void StopCupsService();
     int32_t AddPrinter(const std::string &printerName, const std::string &uri,
@@ -229,6 +230,9 @@ private:
     uint32_t GetListeningState(uint32_t state, uint32_t subState);
     bool CheckPrintJob(PrintJob &jobInfo);
     bool CheckPrinterUriDifferent(const std::shared_ptr<PrinterInfo> &info);
+    std::shared_ptr<PrinterInfo> HandleNewPrinterDiscovery(const std::string &globalPrinterId,
+        const PrinterInfo &info);
+    void SyncAddedPrinterUri(const std::shared_ptr<PrinterInfo> &printerInfo);
     int32_t AddSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool UpdateSinglePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool RemoveSinglePrinterInfo(const std::string &printerId);
