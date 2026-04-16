@@ -4882,7 +4882,6 @@ HWTEST_F(PrintServiceAbilityTest, UpdatePrinterInSystem_EmptyPrinterInfo, TestSi
     
     EXPECT_EQ(service->UpdatePrinterInSystem(info), E_PRINT_INVALID_PRINTER);
 }
-<<<<<<< Updated upstream
 
 /**
 * @tc.name: StartSharedHostDiscovery_PermissionAndListenerTest
@@ -4906,7 +4905,8 @@ HWTEST_F(PrintServiceAbilityTest, StartSharedHostDiscovery_PermissionAndListener
         listener));
     EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NONE);
     DelayedSingleton<EventListenerMgr>::GetInstance()->ClearAllListeners();
-=======
+}
+
 /**
  * @tc.name: SyncAddedPrinterUri_PrinterNotInAddedMap_ShouldNotUpdate
  * @tc.desc: Test SyncAddedPrinterUri when printer is not in addedPrinterMap
@@ -5337,7 +5337,6 @@ HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_CanSyncPrinterInfo
 
     bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
     EXPECT_TRUE(result);
->>>>>>> Stashed changes
 }
 }  // namespace Print
 }  // namespace OHOS
