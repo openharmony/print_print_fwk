@@ -4906,5 +4906,437 @@ HWTEST_F(PrintServiceAbilityTest, StartSharedHostDiscovery_PermissionAndListener
     EXPECT_EQ(service->StartSharedHostDiscovery(), E_PRINT_NONE);
     DelayedSingleton<EventListenerMgr>::GetInstance()->ClearAllListeners();
 }
+
+/**
+ * @tc.name: SyncAddedPrinterUri_PrinterNotInAddedMap_ShouldNotUpdate
+ * @tc.desc: Test SyncAddedPrinterUri when printer is not in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: CheckPrinterUriDifferent returns false when printer not found
+ */
+HWTEST_F(PrintServiceAbilityTest, SyncAddedPrinterUri_PrinterNotInAddedMap_ShouldNotUpdate, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+    info.SetUri("ipp://test.local:631/printers/TestPrinter_001");
+
+    service->SyncAddedPrinterUri(std::make_shared<PrinterInfo>(info));
+
+    auto addedPrinter = service->printSystemData_.GetAddedPrinterMap().Find(globalPrinterId);
+    EXPECT_EQ(addedPrinter, nullptr);
+}
+
+/**
+ * @tc.name: SyncAddedPrinterUri_PrinterInAddedMap_ShouldCheckUriUpdate
+ * @tc.desc: Test SyncAddedPrinterUri when printer exists in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: CheckPrinterUriDifferent should be called when printer exists
+ */
+HWTEST_F(PrintServiceAbilityTest, SyncAddedPrinterUri_PrinterInAddedMap_ShouldCheckUriUpdate, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string originalUri = "ipp://test.local:631/printers/TestPrinter_001";
+
+    auto addedPrinterInfo = std::make_shared<PrinterInfo>();
+    addedPrinterInfo->SetPrinterId(globalPrinterId);
+    addedPrinterInfo->SetPrinterName("TestPrinter_001");
+    addedPrinterInfo->SetUri(originalUri);
+    service->printSystemData_.GetAddedPrinterMap().Insert(globalPrinterId, addedPrinterInfo);
+
+    PrinterInfo newInfo;
+    newInfo.SetPrinterId("TestPrinter_001");
+    newInfo.SetPrinterName("TestPrinter_001");
+    newInfo.SetUri("ipp://test2.local:631/printers/TestPrinter_001");
+
+    service->SyncAddedPrinterUri(std::make_shared<PrinterInfo>(newInfo));
+
+    auto printerAfterSync = service->printSystemData_.GetAddedPrinterMap().Find(globalPrinterId);
+    ASSERT_NE(printerAfterSync, nullptr);
+}
+
+/**
+ * @tc.name: SyncAddedPrinterUri_PrinterInAddedMapWithSameUri_ShouldNotUpdate
+ * @tc.desc: Test SyncAddedPrinterUri when printer has same URI in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: When URI is same, should not trigger update logic
+ */
+HWTEST_F(PrintServiceAbilityTest, SyncAddedPrinterUri_PrinterInAddedMapWithSameUri_ShouldNotUpdate, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string originalUri = "ipp://test.local:631/printers/TestPrinter_001";
+
+    auto addedPrinterInfo = std::make_shared<PrinterInfo>();
+    addedPrinterInfo->SetPrinterId(globalPrinterId);
+    addedPrinterInfo->SetPrinterName("TestPrinter_001");
+    addedPrinterInfo->SetUri(originalUri);
+    service->printSystemData_.GetAddedPrinterMap().Insert(globalPrinterId, addedPrinterInfo);
+
+    PrinterInfo newInfo;
+    newInfo.SetPrinterId("TestPrinter_001");
+    newInfo.SetPrinterName("TestPrinter_001");
+    newInfo.SetUri(originalUri);
+
+    service->SyncAddedPrinterUri(std::make_shared<PrinterInfo>(newInfo));
+
+    auto printerAfterSync = service->printSystemData_.GetAddedPrinterMap().Find(globalPrinterId);
+    ASSERT_NE(printerAfterSync, nullptr);
+    EXPECT_EQ(printerAfterSync->GetUri(), originalUri);
+}
+
+/**
+ * @tc.name: CheckPrinterUriDifferent_PrinterNotInAddedMap_ShouldReturnFalse
+ * @tc.desc: Test CheckPrinterUriDifferent when printer not found in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: Should return false when QueryAddedPrinterInfoByPrinterId fails
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckPrinterUriDifferent_PrinterNotInAddedMap_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    auto printerInfo = std::make_shared<PrinterInfo>();
+    printerInfo->SetPrinterId("com.test.ext:TestPrinter_001");
+    printerInfo->SetPrinterName("TestPrinter_001");
+    printerInfo->SetUri("ipp://test.local:631/printers/TestPrinter_001");
+
+    bool result = service->CheckPrinterUriDifferent(printerInfo);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: CheckPrinterUriDifferent_EmptyProtocol_ShouldReturnFalse
+ * @tc.desc: Test CheckPrinterUriDifferent when protocol from oldUri is empty
+ * @tc.type: FUNC
+ * @tc.require: Should return false when getScheme returns empty protocol
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckPrinterUriDifferent_EmptyProtocol_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+
+    auto addedPrinterInfo = std::make_shared<PrinterInfo>();
+    addedPrinterInfo->SetPrinterId(globalPrinterId);
+    addedPrinterInfo->SetPrinterName("TestPrinter_001");
+    addedPrinterInfo->SetUri("invalid_uri_without_protocol");
+    service->printSystemData_.GetAddedPrinterMap().Insert(globalPrinterId, addedPrinterInfo);
+
+    auto printerInfo = std::make_shared<PrinterInfo>();
+    printerInfo->SetPrinterId(globalPrinterId);
+    printerInfo->SetPrinterName("TestPrinter_001");
+    printerInfo->SetUri("ipp://test.local:631/printers/TestPrinter_001");
+
+    bool result = service->CheckPrinterUriDifferent(printerInfo);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: CheckPrinterUriDifferent_UriChanged_ShouldReturnTrue
+ * @tc.desc: Test CheckPrinterUriDifferent when URI is different
+ * @tc.type: FUNC
+ * @tc.require: Should return true when oldUri differs from newUri
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckPrinterUriDifferent_UriChanged_ShouldReturnTrue, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string oldUri = "ipp://test.local:631/printers/TestPrinter_001";
+
+    auto addedPrinterInfo = std::make_shared<PrinterInfo>();
+    addedPrinterInfo->SetPrinterId(globalPrinterId);
+    addedPrinterInfo->SetPrinterName("TestPrinter_001");
+    addedPrinterInfo->SetUri(oldUri);
+    service->printSystemData_.GetAddedPrinterMap().Insert(globalPrinterId, addedPrinterInfo);
+
+    auto printerInfo = std::make_shared<PrinterInfo>();
+    printerInfo->SetPrinterId(globalPrinterId);
+    printerInfo->SetPrinterName("TestPrinter_001");
+    printerInfo->SetUri("ipp://test2.local:631/printers/TestPrinter_001");
+
+    bool result = service->CheckPrinterUriDifferent(printerInfo);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: CheckPrinterUriDifferent_UriSame_ShouldReturnFalse
+ * @tc.desc: Test CheckPrinterUriDifferent when URI is the same
+ * @tc.type: FUNC
+ * @tc.require: Should return false when oldUri equals newUri
+ */
+HWTEST_F(PrintServiceAbilityTest, CheckPrinterUriDifferent_UriSame_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string sameUri = "ipp://test.local:631/printers/TestPrinter_001";
+
+    auto addedPrinterInfo = std::make_shared<PrinterInfo>();
+    addedPrinterInfo->SetPrinterId(globalPrinterId);
+    addedPrinterInfo->SetPrinterName("TestPrinter_001");
+    addedPrinterInfo->SetUri(sameUri);
+    service->printSystemData_.GetAddedPrinterMap().Insert(globalPrinterId, addedPrinterInfo);
+
+    auto printerInfo = std::make_shared<PrinterInfo>();
+    printerInfo->SetPrinterId(globalPrinterId);
+    printerInfo->SetPrinterName("TestPrinter_001");
+    printerInfo->SetUri(sameUri);
+
+    bool result = service->CheckPrinterUriDifferent(printerInfo);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: HandleNewPrinterDiscovery_PrinterNotAdded_ShouldAddToDiscovery
+ * @tc.desc: Test HandleNewPrinterDiscovery when printer not in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: Should add printer to discovery without syncing from added printer
+ */
+HWTEST_F(PrintServiceAbilityTest, HandleNewPrinterDiscovery_PrinterNotAdded_ShouldAddToDiscovery, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    auto result = service->HandleNewPrinterDiscovery(globalPrinterId, info);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetPrinterId(), globalPrinterId);
+
+    auto discoveredPrinter = service->printSystemData_.QueryDiscoveredPrinterInfoById(globalPrinterId);
+    ASSERT_NE(discoveredPrinter, nullptr);
+}
+
+/**
+ * @tc.name: HandleNewPrinterDiscovery_PrinterIsIpAddress_ShouldNotSync
+ * @tc.desc: Test HandleNewPrinterDiscovery when printer name is IP address
+ * @tc.type: FUNC
+ * @tc.require: Should not sync printer info when printer name is IP address
+ */
+HWTEST_F(PrintServiceAbilityTest, HandleNewPrinterDiscovery_PrinterIsIpAddress_ShouldNotSync, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string ipPrinterName = "10.0.0.1";
+
+    PrinterInfo addedPrinter;
+    addedPrinter.SetPrinterId(globalPrinterId);
+    addedPrinter.SetPrinterName(ipPrinterName);
+    addedPrinter.SetAlias("TestAlias");
+    service->printSystemData_.InsertAddedPrinter(globalPrinterId, addedPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("OriginalName");
+
+    auto result = service->HandleNewPrinterDiscovery(globalPrinterId, info);
+    ASSERT_NE(result, nullptr);
+}
+
+/**
+ * @tc.name: HandleNewPrinterDiscovery_HasAlias_ShouldSyncAlias
+ * @tc.desc: Test HandleNewPrinterDiscovery when added printer has alias
+ * @tc.type: FUNC
+ * @tc.require: Should sync printer name and alias from added printer
+ */
+HWTEST_F(PrintServiceAbilityTest, HandleNewPrinterDiscovery_HasAlias_ShouldSyncAlias, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string expectedPrinterName = "TestPrinterName";
+    std::string expectedAlias = "TestAlias";
+
+    PrinterInfo addedPrinter;
+    addedPrinter.SetPrinterId(globalPrinterId);
+    addedPrinter.SetPrinterName(expectedPrinterName);
+    addedPrinter.SetAlias(expectedAlias);
+    service->printSystemData_.InsertAddedPrinter(globalPrinterId, addedPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("OriginalName");
+
+    auto result = service->HandleNewPrinterDiscovery(globalPrinterId, info);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetPrinterName(), expectedPrinterName);
+    EXPECT_TRUE(result->HasAlias());
+    EXPECT_EQ(result->GetAlias(), expectedAlias);
+}
+
+/**
+ * @tc.name: HandleNewPrinterDiscovery_NoAlias_ShouldNotSetAlias
+ * @tc.desc: Test HandleNewPrinterDiscovery when added printer has no alias
+ * @tc.type: FUNC
+ * @tc.require: Should sync printer name but not set alias
+ */
+HWTEST_F(PrintServiceAbilityTest, HandleNewPrinterDiscovery_NoAlias_ShouldNotSetAlias, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string globalPrinterId = "com.test.ext:TestPrinter_001";
+    std::string expectedPrinterName = "TestPrinterName";
+
+    PrinterInfo addedPrinter;
+    addedPrinter.SetPrinterId(globalPrinterId);
+    addedPrinter.SetPrinterName(expectedPrinterName);
+    service->printSystemData_.InsertAddedPrinter(globalPrinterId, addedPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("OriginalName");
+
+    auto result = service->HandleNewPrinterDiscovery(globalPrinterId, info);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->GetPrinterName(), expectedPrinterName);
+    EXPECT_FALSE(result->HasAlias());
+}
+
+/**
+ * @tc.name: AddVendorPrinterToDiscovery_NewPrinter_ShouldAddToDiscovery
+ * @tc.desc: Test AddVendorPrinterToDiscovery when printer not in discovery list
+ * @tc.type: FUNC
+ * @tc.require: Should call HandleNewPrinterDiscovery for new printer
+ */
+HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_NewPrinter_ShouldAddToDiscovery, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string vendorName = "com.test.ext";
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
+    EXPECT_TRUE(result);
+
+    std::string globalPrinterId = vendorName + ":" + info.GetPrinterId();
+    auto discoveredPrinter = service->printSystemData_.QueryDiscoveredPrinterInfoById(globalPrinterId);
+    ASSERT_NE(discoveredPrinter, nullptr);
+}
+
+/**
+ * @tc.name: AddVendorPrinterToDiscovery_ExistingPrinter_ShouldUpdateState
+ * @tc.desc: Test AddVendorPrinterToDiscovery when printer already in discovery list
+ * @tc.type: FUNC
+ * @tc.require: Should update existing printer state without calling HandleNewPrinterDiscovery
+ */
+HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_ExistingPrinter_ShouldUpdateState, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string vendorName = "com.test.ext";
+    std::string globalPrinterId = vendorName + ":TestPrinter_001";
+
+    auto existingPrinter = std::make_shared<PrinterInfo>();
+    existingPrinter->SetPrinterId(globalPrinterId);
+    existingPrinter->SetPrinterName("TestPrinter_001");
+    service->printSystemData_.AddPrinterToDiscovery(existingPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AddVendorPrinterToDiscovery_PrinterNotAdded_ShouldNotSync
+ * @tc.desc: Test AddVendorPrinterToDiscovery when printer not in addedPrinterMap
+ * @tc.type: FUNC
+ * @tc.require: Should not sync printer info when printer not added
+ */
+HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_PrinterNotAdded_ShouldNotSync, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string vendorName = "com.test.ext";
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AddVendorPrinterToDiscovery_PrinterBusy_ShouldNotSync
+ * @tc.desc: Test AddVendorPrinterToDiscovery when printer is busy
+ * @tc.type: FUNC
+ * @tc.require: Should not sync printer info when printer is busy
+ */
+HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_PrinterBusy_ShouldNotSync, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string vendorName = "com.test.ext";
+    std::string globalPrinterId = vendorName + ":TestPrinter_001";
+
+    PrinterInfo addedPrinter;
+    addedPrinter.SetPrinterId(globalPrinterId);
+    addedPrinter.SetPrinterName("TestPrinter_001");
+    addedPrinter.SetPrinterStatus(PRINTER_STATUS_BUSY);
+    service->printSystemData_.InsertAddedPrinter(globalPrinterId, addedPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AddVendorPrinterToDiscovery_CanSyncPrinterInfo_ShouldSync
+ * @tc.desc: Test AddVendorPrinterToDiscovery when can sync printer info from added printer
+ * @tc.type: FUNC
+ * @tc.require: Should sync printer info when printer added and not busy and not IP address
+ */
+HWTEST_F(PrintServiceAbilityTest, AddVendorPrinterToDiscovery_CanSyncPrinterInfo_ShouldSync, TestSize.Level1)
+{
+    auto service = std::make_shared<PrintServiceAbility>(PRINT_SERVICE_ID, true);
+    ASSERT_NE(service, nullptr);
+
+    std::string vendorName = "com.test.ext";
+    std::string globalPrinterId = vendorName + ":TestPrinter_001";
+    std::string expectedPrinterName = "SyncedPrinterName";
+
+    PrinterInfo addedPrinter;
+    addedPrinter.SetPrinterId(globalPrinterId);
+    addedPrinter.SetPrinterName(expectedPrinterName);
+    service->printSystemData_.InsertAddedPrinter(globalPrinterId, addedPrinter);
+
+    PrinterInfo info;
+    info.SetPrinterId("TestPrinter_001");
+    info.SetPrinterName("TestPrinter_001");
+
+    bool result = service->AddVendorPrinterToDiscovery(vendorName, info);
+    EXPECT_TRUE(result);
+}
 }  // namespace Print
 }  // namespace OHOS
