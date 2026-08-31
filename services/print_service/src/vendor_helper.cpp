@@ -14,7 +14,10 @@
  */
 
 #include <securec.h>
+#include <charconv>
+#include <cstring>
 #include <regex>
+#include <system_error>
 #include "vendor_helper.h"
 #include "print_service_converter.h"
 #include "print_log.h"
@@ -26,7 +29,6 @@
 namespace {
 constexpr uint32_t MAX_RESOLUTION_COUNT = 64;
 const uint32_t ORIENTATION_OFFSET = 3;
-const int NUMBER_BASE = 10;
 const size_t MAX_STRING_COUNT = 1000;
 const uint32_t MAX_MEDIA_TYPE_SIZE = 200;
 const uint32_t MAX_COLOR_MODE_COUNT = 200;
@@ -134,16 +136,18 @@ std::string GetStringValueFromJson(const Json::Value &jsonObject, const std::str
 
 bool ConvertStringToLong(const char *src, long &dst)
 {
-    if (src == nullptr) {
+    if (src == nullptr || src[0] == '\0') {
         return false;
     }
-    errno = 0;
-    char *endPtr = nullptr;
-    dst = strtol(src, &endPtr, NUMBER_BASE);
-    if (errno == ERANGE || endPtr == src) {
+    const char *first = src;
+    const char *last = src + std::strlen(src);
+    long value = 0;
+    auto [ptr, ec] = std::from_chars(first, last, value);
+    if (ec != std::errc() || ptr != last) {
         PRINT_HILOGE("ConvertStringToLong fail: %{public}s", src);
         return false;
     }
+    dst = value;
     return true;
 }
 
