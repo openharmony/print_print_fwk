@@ -101,6 +101,7 @@ std::string VendorPpdDriver::QueryPpdName(const std::string &makeAndModel)
 
 void VendorPpdDriver::DiscoverBackendPrinters()
 {
+    PRINT_HILOGI("DiscoverBackendPrinters enter");
     std::vector<PrinterInfo> printers = {};
     if (vendorManager == nullptr) {
         PRINT_HILOGW("vendorManager is null");
@@ -110,6 +111,9 @@ void VendorPpdDriver::DiscoverBackendPrinters()
         PRINT_HILOGW("Discovery backend printer fail.");
         return;
     }
+    PRINT_HILOGI("DiscoverBackendPrinters found %{public}zu printers", printers.size());
+    int32_t addedCount = 0;
+    int32_t removedCount = 0;
     std::unique_lock<std::mutex> lock(updateDiscoveryMutex_);
     for (auto &[printerId, isDiscovered] : discoveredPrinters_) {
         isDiscovered = false;
@@ -118,13 +122,16 @@ void VendorPpdDriver::DiscoverBackendPrinters()
     for (const auto &printer : printers) {
         discoveredPrinters_[printer.GetPrinterId()] = true;
         vendorManager->AddPrinterToDiscovery(GetVendorName(), printer);
+        addedCount++;
     }
     // remove non-discovered printer
     for (const auto &[printerId, isDiscovered] : discoveredPrinters_) {
         if (!isDiscovered) {
             vendorManager->RemovePrinterFromDiscovery(GetVendorName(), printerId);
+            removedCount++;
         }
     }
+    PRINT_HILOGI("DiscoverBackendPrinters done, added=%{public}d, removed=%{public}d", addedCount, removedCount);
 }
 
 void VendorPpdDriver::OnStartDiscovery()
