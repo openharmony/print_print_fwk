@@ -435,6 +435,32 @@ HWTEST_F(PrintCupsPpdTest, FindCustomParamLimit_InvalidType_ReturnsFalse, TestSi
     EXPECT_EQ(result["maximum"].asInt(), 0);
 }
 
+HWTEST_F(PrintCupsPpdTest, FindCustomParamLimit_PasscodeType_ReturnsCorrectJson, TestSize.Level1)
+{
+    ppd_cparam_t cparam;
+    cparam.type = PPD_CUSTOM_PASSCODE;
+    cparam.minimum.custom_passcode = 4;
+    cparam.maximum.custom_passcode = 8;
+
+    Json::Value result = FindCustomParamLimit(&cparam);
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(result["minimum"].asInt(), 4);
+    EXPECT_EQ(result["maximum"].asInt(), 8);
+}
+
+HWTEST_F(PrintCupsPpdTest, FindCustomParamLimit_PasswordType_ReturnsCorrectJson, TestSize.Level1)
+{
+    ppd_cparam_t cparam;
+    cparam.type = PPD_CUSTOM_PASSWORD;
+    cparam.minimum.custom_password = 6;
+    cparam.maximum.custom_password = 12;
+
+    Json::Value result = FindCustomParamLimit(&cparam);
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(result["minimum"].asInt(), 6);
+    EXPECT_EQ(result["maximum"].asInt(), 12);
+}
+
 HWTEST_F(PrintCupsPpdTest, ExtractBundleNameFromPpdName_ValidPpdName_ReturnsBundle, TestSize.Level1)
 {
     std::string ppdName = "com.vendor.driver_Test_Printer.ppd";
