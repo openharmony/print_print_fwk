@@ -140,6 +140,32 @@ HWTEST_F(EventListenerMgrTest, RegisterExtensionListener_ShouldReturnTrue_WhenLi
     EXPECT_TRUE(eventListenerMgr.RegisterExtensionListener(EXTCB_START_DISCOVERY, TEST_EXTENSION_ID, listener));
 }
 
+HWTEST_F(EventListenerMgrTest, RegisterPrinterListener_ShouldAddDeathRecipient_WhenNewCallback, TestSize.Level1)
+{
+    EventListenerMgr eventListenerMgr;
+    sptr<MockPrintCallbackProxy> listener = new MockPrintCallbackProxy();
+    sptr<MockRemoteObject> obj = new MockRemoteObject();
+    EXPECT_CALL(*listener, AsObject()).WillRepeatedly(Return(obj));
+    sptr<IRemoteObject::DeathRecipient> recipient;
+    EXPECT_CALL(*obj, AddDeathRecipient(_)).Times(1)
+        .WillOnce(DoAll(SaveArg<0>(&recipient), Return(true)));
+    EXPECT_TRUE(eventListenerMgr.RegisterPrinterListener(PRINTER_STATE_CHANGE, listener));
+    EXPECT_EQ(recipient.GetRefPtr(), eventListenerMgr.GetDeathRecipient().GetRefPtr());
+}
+
+HWTEST_F(EventListenerMgrTest, RegisterExtensionListener_ShouldAddDeathRecipient_WhenNewCallback, TestSize.Level1)
+{
+    EventListenerMgr eventListenerMgr;
+    sptr<MockPrintExtensionCallbackProxy> listener = new MockPrintExtensionCallbackProxy();
+    sptr<MockRemoteObject> obj = new MockRemoteObject();
+    EXPECT_CALL(*listener, AsObject()).WillRepeatedly(Return(obj));
+    sptr<IRemoteObject::DeathRecipient> recipient;
+    EXPECT_CALL(*obj, AddDeathRecipient(_)).Times(1)
+        .WillOnce(DoAll(SaveArg<0>(&recipient), Return(true)));
+    EXPECT_TRUE(eventListenerMgr.RegisterExtensionListener(EXTCB_START_DISCOVERY, TEST_EXTENSION_ID, listener));
+    EXPECT_EQ(recipient.GetRefPtr(), eventListenerMgr.GetDeathRecipient().GetRefPtr());
+}
+
 HWTEST_F(EventListenerMgrTest, RegisterPrintJobListener_ShouldReturnTrue_WhenValidListener, TestSize.Level0)
 {
     EventListenerMgr eventListenerMgr;
