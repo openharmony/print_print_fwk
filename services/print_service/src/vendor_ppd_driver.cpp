@@ -111,8 +111,8 @@ void VendorPpdDriver::DiscoverBackendPrinters()
         return;
     }
     std::unique_lock<std::mutex> lock(updateDiscoveryMutex_);
-    for (auto &isDiscoveredPair : discoveredPrinters_) {
-        isDiscoveredPair.second = false;
+    for (auto &[printerId, isDiscovered] : discoveredPrinters_) {
+        isDiscovered = false;
     }
     // add or update new printer is discovered
     for (const auto &printer : printers) {
@@ -120,9 +120,9 @@ void VendorPpdDriver::DiscoverBackendPrinters()
         vendorManager->AddPrinterToDiscovery(GetVendorName(), printer);
     }
     // remove non-discovered printer
-    for (const auto &isDiscoveredPair : discoveredPrinters_) {
-        if (!isDiscoveredPair.second) {
-            vendorManager->RemovePrinterFromDiscovery(GetVendorName(), isDiscoveredPair.first);
+    for (const auto &[printerId, isDiscovered] : discoveredPrinters_) {
+        if (!isDiscovered) {
+            vendorManager->RemovePrinterFromDiscovery(GetVendorName(), printerId);
         }
     }
 }
