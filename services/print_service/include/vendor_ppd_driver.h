@@ -18,6 +18,8 @@
 
 #include <vector>
 #include <mutex>
+#include <atomic>
+#include <thread>
 #include "vendor_driver_base.h"
 #include "vendor_manager.h"
 
@@ -47,6 +49,9 @@ private:
     std::shared_ptr<PrinterInfo> connectingPrinterInfo;
     std::mutex updateDiscoveryMutex_;
     std::map<std::string, bool> discoveredPrinters_;
+    std::atomic<bool> isDiscoveryRunning_{false};
+    std::thread discoveryThread_;
+    std::mutex discoveryThreadMutex_;
 };
 }  // namespace Print
 }  // namespace OHOS
