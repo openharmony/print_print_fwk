@@ -20,7 +20,7 @@
 #include <map>
 #include <mutex>
 #include <chrono>
-#include <memory>
+#include "refbase.h"
 #include "vendor_extension.h"
 #include "printer_info.h"
 #include "print_constant.h"
@@ -95,7 +95,7 @@ public:
 #endif  // ENTERPRISE_ENABLE
 };
 
-class VendorDriverBase : public std::enable_shared_from_this<VendorDriverBase> {
+class VendorDriverBase : public virtual RefBase {
 public:
     VendorDriverBase();
     virtual ~VendorDriverBase();
