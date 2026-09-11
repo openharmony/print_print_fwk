@@ -57,7 +57,6 @@ private:
     std::mutex updateDiscoveryMutex_;
     std::map<std::string, bool> discoveredPrinters_;
     std::atomic<int32_t> discoveryState_{DISCOVERY_IDLE};
-    std::thread discoveryThread_;
 };
 }  // namespace Print
 }  // namespace OHOS
