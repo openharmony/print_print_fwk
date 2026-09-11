@@ -146,7 +146,7 @@ void VendorPpdDriver::OnStartDiscovery()
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();
     }
-    auto weak = weak_from_this();
+    std::weak_ptr<VendorDriverBase> weak = weak_from_this();
     discoveryThread_ = std::thread([weak]() {
         auto self = std::static_pointer_cast<VendorPpdDriver>(weak.lock());
         if (self == nullptr) {
