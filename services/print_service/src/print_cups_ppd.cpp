@@ -383,7 +383,7 @@ void GetAdvanceOptJsSingleJSFromOption(ppd_file_t *ppd, ppd_option_t *opt, Json:
             advanceOptJsSingle["customParamType"] = cparam->type;
             advanceOptJsSingle["customParamLimit"] = FindCustomParamLimit(cparam);
             hasCustomParam = true;
-            if (cparam->type == PPD_CUSTOM_PASSCODE || cparam->type == PPD_CUSTOM_PASSWORD) {
+            if (cparam->type != PPD_CUSTOM_STRING) {
                 continue;
             }
         }
