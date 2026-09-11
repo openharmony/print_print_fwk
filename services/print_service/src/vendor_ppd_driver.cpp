@@ -146,12 +146,10 @@ void VendorPpdDriver::OnStartDiscovery()
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();
     }
-    std::weak_ptr<VendorDriverBase> weak = weak_from_this();
-    discoveryThread_ = std::thread([weak]() {
-        auto self = std::static_pointer_cast<VendorPpdDriver>(weak.lock());
-        if (self == nullptr) {
-            return;
-        }
+    wptr<VendorPpdDriver> weakThis = this;
+    discoveryThread_ = std::thread([weakThis]() {
+        sptr<VendorPpdDriver> self = weakThis.promote();
+        PRINT_CHECK_NULL_RETURN_VOID(self);
         self->DiscoverBackendPrinters();
         self->isDiscoveryRunning_.store(false);
     });
