@@ -38,10 +38,11 @@ enum class ImageFormat : int32_t {
 
 class ScanTask {
 public:
-    ScanTask(const std::string& scannerId, int32_t userId, bool batchMode);
+    ScanTask(const std::string& scannerId, int32_t userId, bool batchMode, int32_t callerPid = 0);
     ~ScanTask();
     std::string GetScannerId() const;
     bool GetBatchMode() const;
+    int32_t GetCallerPid() const { return callerPid_; }
     bool CreateAndOpenScanFile(std::string& filePath, ImageFormat imgFmt = ImageFormat::IMAGE_TYPE_JPEG,
         uint32_t quality = JPEG_QUALITY_SEVENTY_FIVE);
     int32_t WriteImageHeader(const ScanParameters &parm, uint16_t dpi);
@@ -68,6 +69,7 @@ private:
     std::string filePath_;
     bool batchMode_;
     int32_t userId_;
+    int32_t callerPid_ = 0;
 
     uint16_t dpi_ = 0;
     ImageFormat imageFormat_ = ImageFormat::IMAGE_TYPE_NONE;

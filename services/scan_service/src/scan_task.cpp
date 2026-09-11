@@ -33,10 +33,11 @@ const uint8_t JFIF_DENSITY_UNITS_INCH = 0x01;
 const size_t JFIF_DENSITY_UNITS_FILE_POS = 13;
 const size_t JFIF_DENSITY_VALUE_LEN = 2;
 
-ScanTask::ScanTask(const std::string& scannerId, int32_t userId, bool batchMode)
+ScanTask::ScanTask(const std::string& scannerId, int32_t userId, bool batchMode, int32_t callerPid)
     :   scannerId_(scannerId),
         batchMode_(batchMode),
-        userId_(userId)
+        userId_(userId),
+        callerPid_(callerPid)
 {
 }
 

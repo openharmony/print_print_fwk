@@ -72,7 +72,7 @@ void TestSetImageRealPath(const uint8_t* data, size_t size, FuzzedDataProvider* 
     auto& instance = ScanPictureData::GetInstance();
     instance.PushScanPictureProgress();
     std::string filePath = dataProvider->ConsumeRandomLengthString(MAX_STRING_LENGTH);
-    instance.RegisterCacheFiles(filePath);
+    instance.RegisterCacheFiles(filePath, 1);
     instance.CleanAllCache();
 }
 
@@ -105,7 +105,7 @@ void TestFullWorkflow(const uint8_t* data, size_t size, FuzzedDataProvider* data
     auto& instance = ScanPictureData::GetInstance();
     instance.PushScanPictureProgress();
     std::string filePath = dataProvider->ConsumeRandomLengthString(MAX_STRING_LENGTH);
-    instance.RegisterCacheFiles(filePath);
+    instance.RegisterCacheFiles(filePath, 1);
     int32_t taskCode = dataProvider->ConsumeIntegralInRange<int32_t>(0, MAX_SET_NUMBER);
     instance.SetScanTaskCode(taskCode);
     int64_t totalBytes = dataProvider->ConsumeIntegralInRange<int64_t>(0, MAX_SET_NUMBER);

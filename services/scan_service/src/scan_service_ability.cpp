@@ -244,6 +244,22 @@ int32_t ScanServiceAbility::ExitScan()
         return E_SCAN_NO_PERMISSION;
     }
     ManualStart();
+    std::lock_guard<std::recursive_mutex> autoLock(lock_);
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    // If this caller still holds the scanner, close it first: clears the scan
+    // queue (avoiding zombie queue entries after CleanByOwner removes scanTaskMap_
+    // items), cancels in-progress SANE read (avoiding unlinking files being
+    // written), and resets openedScanner_ so other apps can OpenScanner without
+    // waiting for the 60s death-detection fallback. Best-effort: log failure but
+    // still proceed to CleanByOwner.
+    if (openedScanner_.has_value() && openedScanner_->callerPid == callerPid) {
+        int32_t ret = CloseScanner(openedScanner_->scannerId);
+        if (ret != E_SCAN_NONE) {
+            SCAN_HILOGW("ExitScan CloseScanner failed: %{public}d, continue CleanByOwner", ret);
+        }
+    }
+    // Clean only this caller's exported scan results (per-app, not global).
+    scanPictureData_.CleanByOwner(callerPid);
     return E_SCAN_NONE;
 }
 
@@ -588,7 +604,10 @@ int32_t ScanServiceAbility::CloseScanner(const std::string scannerId)
     if (int32_t ownerRet = CheckScannerOwner(scannerId); ownerRet != E_SCAN_NONE) {
         return ownerRet;
     }
-    scanPictureData_.CleanAllCache();
+    // Only clear the in-progress scan queue; keep already-delivered results
+    // (fd + files) so id-switch / re-export after close still works.
+    // Mirrors d23ba41f's fix for StartScanTask.
+    scanPictureData_.CleanScanQueue();
     if (scannerState_.load() == SCANNER_SCANING) {
         SaneManagerClient::GetInstance().SaneCancel(scannerId);
     }
@@ -1264,8 +1283,9 @@ int32_t ScanServiceAbility::StartScan(const std::string scannerId, const bool &b
     scannerState_.store(SCANNER_SCANING);
     scanPictureData_.PushScanPictureProgress();
     int32_t userId = GetCurrentUserId();
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
     auto exe = [=] () {
-        ScanTask task(scannerId, userId, batchMode);
+        ScanTask task(scannerId, userId, batchMode, callerPid);
         task.SetBinarize(needBinarize);
         StartScanTask(task);
     };
@@ -1313,10 +1333,10 @@ bool ScanServiceAbility::CreateAndOpenScanFile(ScanTask &scanTask)
     }
     
     std::string baseName = ScanServiceUtils::ExtractBaseName(filePath);
-    
+
     {
         std::lock_guard<std::recursive_mutex> autoLock(lock_);
-        scanPictureData_.RegisterCacheFiles(baseName);
+        scanPictureData_.RegisterCacheFiles(baseName, scanTask.GetCallerPid());
     }
     return true;
 }
@@ -1538,6 +1558,9 @@ void ScanServiceAbility::CleanupDeadCaller(int32_t deadPid)
             }
         }
     }
+    // Clean this dead caller's exported scan results (per-app), so a crashed
+    // app does not leak fds/files and does not block the next owner.
+    scanPictureData_.CleanByOwner(deadPid);
 }
 
 int32_t ScanServiceAbility::GetScannerImageDpi(const std::string& scannerId, int32_t& dpi)
