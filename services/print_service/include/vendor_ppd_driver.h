@@ -27,6 +27,12 @@
 namespace OHOS {
 namespace Print {
 
+enum DiscoveryState : int32_t {
+    DISCOVERY_IDLE = 0,
+    DISCOVERY_RUNNING = 1,
+    DISCOVERY_WAITING = 2,
+};
+
 class VendorPpdDriver : public VendorDriverBase {
 public:
     VendorPpdDriver();
@@ -50,7 +56,7 @@ private:
     std::shared_ptr<PrinterInfo> connectingPrinterInfo;
     std::mutex updateDiscoveryMutex_;
     std::map<std::string, bool> discoveredPrinters_;
-    std::atomic<bool> isDiscoveryRunning_{false};
+    std::atomic<int32_t> discoveryState_{DISCOVERY_IDLE};
     std::thread discoveryThread_;
     std::mutex discoveryThreadMutex_;
 };
