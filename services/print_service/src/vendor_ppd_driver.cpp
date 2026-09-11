@@ -137,18 +137,23 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_HILOGW("OnStartDiscovery vendorManager is null.");
         return;
     }
-    if (isDiscoveryRunning_.load()) {
+    std::lock_guard<std::mutex> lock(discoveryThreadMutex_);
+    bool expected = false;
+    if (!isDiscoveryRunning_.compare_exchange_strong(expected, true)) {
         PRINT_HILOGW("OnStartDiscovery discovery already running");
         return;
     }
-    std::lock_guard<std::mutex> lock(discoveryThreadMutex_);
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();
     }
-    isDiscoveryRunning_.store(true);
-    discoveryThread_ = std::thread([this]() {
-        DiscoverBackendPrinters();
-        isDiscoveryRunning_.store(false);
+    auto weak = weak_from_this();
+    discoveryThread_ = std::thread([weak]() {
+        auto self = std::static_pointer_cast<VendorPpdDriver>(weak.lock());
+        if (self == nullptr) {
+            return;
+        }
+        self->DiscoverBackendPrinters();
+        self->isDiscoveryRunning_.store(false);
     });
 }
 

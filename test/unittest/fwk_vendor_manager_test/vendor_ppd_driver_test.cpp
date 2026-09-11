@@ -184,17 +184,17 @@ HWTEST_F(VendorPpdDriverTest, DiscoverBackendPrinters_ShouldWorkNormolly, TestSi
 HWTEST_F(VendorPpdDriverTest, StartAndStopDiscovery_ShouldWorkNormolly, TestSize.Level1)
 {
     MockVendorManager mock;
-    VendorPpdDriver vendorDriver;
-    EXPECT_TRUE(vendorDriver.Init(&mock));
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
+    EXPECT_TRUE(vendorDriver->Init(&mock));
     PrinterInfo info;
     info.SetPrinterId("test1");
     std::vector<PrinterInfo> infoVec = {info};
     EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
         .Times(1)
         .WillRepeatedly(DoAll(SetArgReferee<1>(infoVec), Return(E_PRINT_NONE)));
-    vendorDriver.OnStartDiscovery();
+    vendorDriver->OnStartDiscovery();
     std::this_thread::sleep_for(std::chrono::seconds(10));
-    vendorDriver.OnStopDiscovery();
+    vendorDriver->OnStopDiscovery();
 }
 
 /**
@@ -300,17 +300,17 @@ HWTEST_F(VendorPpdDriverTest, OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning, 
 HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldJoinPreviousThread_WhenCalledTwice, TestSize.Level1)
 {
     MockVendorManager mock;
-    VendorPpdDriver vendorDriver;
-    EXPECT_TRUE(vendorDriver.Init(&mock));
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
+    EXPECT_TRUE(vendorDriver->Init(&mock));
     EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
         .Times(2)
         .WillRepeatedly(Return(E_PRINT_NONE));
-    vendorDriver.OnStartDiscovery();
+    vendorDriver->OnStartDiscovery();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    vendorDriver.OnStartDiscovery();
+    vendorDriver->OnStartDiscovery();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    vendorDriver.OnStopDiscovery();
-    EXPECT_FALSE(vendorDriver.isDiscoveryRunning_.load());
+    vendorDriver->OnStopDiscovery();
+    EXPECT_FALSE(vendorDriver->isDiscoveryRunning_.load());
 }
 
 /**
