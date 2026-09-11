@@ -31,11 +31,12 @@ public:
     void SetScanTaskCode(int32_t taskCode);
     void SetNowScanProgressFinished(bool isFinal);
     void SetLastScanProgressFinished();
-    bool RegisterCacheFiles(const std::string& baseName);
+    bool RegisterCacheFiles(const std::string& baseName, int32_t callerPid);
     int32_t GetPictureProgressInQueue(ScanProgress& scanProgress);
     void CleanAllCache();
     void CleanScanQueue();
     void CleanDiskCache();
+    void CleanByOwner(int32_t ownerPid);
     void PushScanPictureProgress();
     void RegisterExportedResult(const std::string& baseName, int32_t fd, int32_t format);
 
@@ -48,6 +49,7 @@ private:
     std::queue<int32_t> scanQueue_;
     std::map<std::string, int32_t> scanCacheFdMap_;
     std::map<int32_t, ScanProgress> scanTaskMap_;
+    std::map<std::string, int32_t> baseNameOwnerMap_;
     int32_t picId_ = 0;
 };
 
