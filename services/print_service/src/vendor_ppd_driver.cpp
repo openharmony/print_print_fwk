@@ -137,21 +137,16 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_HILOGW("OnStartDiscovery vendorManager is null.");
         return;
     }
-    std::lock_guard<std::mutex> lock(discoveryThreadMutex_);
     int32_t expected = DISCOVERY_IDLE;
     if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-        // IDLE -> RUNNING: proceed to spawn thread
+        // IDLE -> RUNNING: spawn
     } else if (expected == DISCOVERY_RUNNING) {
         if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_WAITING)) {
             PRINT_HILOGI("OnStartDiscovery discovery queued as waiting");
             return;
         }
-        // Thread just completed (RUNNING -> IDLE), retry IDLE -> RUNNING
-        expected = DISCOVERY_IDLE;
-        if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-            PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
-            return;
-        }
+        // Thread completed (IDLE), restart
+        discoveryState_.store(DISCOVERY_RUNNING);
     } else {
         PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
         return;
@@ -165,12 +160,12 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_CHECK_NULL_RETURN_VOID(self);
         do {
             self->DiscoverBackendPrinters();
-            int32_t expected = DISCOVERY_RUNNING;
-            if (self->discoveryState_.compare_exchange_strong(expected, DISCOVERY_IDLE)) {
+            int32_t exp = DISCOVERY_RUNNING;
+            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE)) {
                 break;
             }
-            expected = DISCOVERY_WAITING;
-            if (self->discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
+            exp = DISCOVERY_WAITING;
+            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_RUNNING)) {
                 continue;
             }
             break;
@@ -182,7 +177,6 @@ void VendorPpdDriver::OnStopDiscovery()
 {
     PRINT_HILOGI("OnStopDiscovery enter");
     discoveryState_.store(DISCOVERY_IDLE);
-    std::lock_guard<std::mutex> lock(discoveryThreadMutex_);
     if (discoveryThread_.joinable()) {
         discoveryThread_.join();
     }

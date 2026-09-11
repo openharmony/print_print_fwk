@@ -271,12 +271,12 @@ HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldRejectWhenAlreadyRunning, T
     MockVendorManager mock;
     VendorPpdDriver vendorDriver;
     EXPECT_TRUE(vendorDriver.Init(&mock));
-    vendorDriver.isDiscoveryRunning_.store(true);
+    vendorDriver.discoveryState_.store(DISCOVERY_WAITING);
     EXPECT_CALL(mock, DiscoverBackendPrinters(_, _)).Times(0);
     vendorDriver.OnStartDiscovery();
-    EXPECT_TRUE(vendorDriver.isDiscoveryRunning_.load());
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_WAITING);
     vendorDriver.OnStopDiscovery();
-    EXPECT_FALSE(vendorDriver.isDiscoveryRunning_.load());
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_IDLE);
 }
 
 /**
@@ -288,7 +288,7 @@ HWTEST_F(VendorPpdDriverTest, OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning, 
 {
     VendorPpdDriver vendorDriver;
     vendorDriver.OnStopDiscovery();
-    EXPECT_FALSE(vendorDriver.isDiscoveryRunning_.load());
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_IDLE);
     EXPECT_FALSE(vendorDriver.discoveryThread_.joinable());
 }
 
@@ -310,7 +310,7 @@ HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldJoinPreviousThread_WhenCall
     vendorDriver->OnStartDiscovery();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     vendorDriver->OnStopDiscovery();
-    EXPECT_FALSE(vendorDriver->isDiscoveryRunning_.load());
+    EXPECT_EQ(vendorDriver->discoveryState_.load(), DISCOVERY_IDLE);
 }
 
 /**
