@@ -151,11 +151,8 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
         return;
     }
-    if (discoveryThread_.joinable()) {
-        discoveryThread_.join();
-    }
     wptr<VendorPpdDriver> weakThis = this;
-    discoveryThread_ = std::thread([weakThis]() {
+    std::thread([weakThis]() {
         sptr<VendorPpdDriver> self = weakThis.promote();
         PRINT_CHECK_NULL_RETURN_VOID(self);
         do {
@@ -170,16 +167,13 @@ void VendorPpdDriver::OnStartDiscovery()
             }
             break;
         } while (true);
-    });
+    }).detach();
 }
 
 void VendorPpdDriver::OnStopDiscovery()
 {
     PRINT_HILOGI("OnStopDiscovery enter");
     discoveryState_.store(DISCOVERY_IDLE);
-    if (discoveryThread_.joinable()) {
-        discoveryThread_.join();
-    }
 }
 
 bool VendorPpdDriver::TryConnectByPpdDriver(const PrinterInfo &printerInfo)

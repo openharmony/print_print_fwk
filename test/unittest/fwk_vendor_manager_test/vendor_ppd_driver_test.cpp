@@ -289,7 +289,6 @@ HWTEST_F(VendorPpdDriverTest, OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning, 
     VendorPpdDriver vendorDriver;
     vendorDriver.OnStopDiscovery();
     EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_IDLE);
-    EXPECT_FALSE(vendorDriver.discoveryThread_.joinable());
 }
 
 /**
