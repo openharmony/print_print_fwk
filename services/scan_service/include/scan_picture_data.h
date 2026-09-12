@@ -18,6 +18,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <mutex>
 #include <chrono>
 #include <queue>
@@ -49,7 +50,7 @@ private:
     std::queue<int32_t> scanQueue_;
     std::map<std::string, int32_t> scanCacheFdMap_;
     std::map<int32_t, ScanProgress> scanTaskMap_;
-    std::map<std::string, int32_t> baseNameOwnerMap_;
+    std::map<int32_t, std::set<std::string>> ownerBaseNames_;
     int32_t picId_ = 0;
 };
 

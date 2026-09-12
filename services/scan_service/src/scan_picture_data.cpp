@@ -65,7 +65,7 @@ void ScanPictureData::CleanAllCache()
     std::queue<int32_t> empty;
     scanQueue_.swap(empty);
     scanTaskMap_.clear();
-    baseNameOwnerMap_.clear();
+    ownerBaseNames_.clear();
 }
 
 int32_t ScanPictureData::HandleCompletedScanPicture(ScanProgress& scanProgress, ScanProgress& prog)
@@ -169,7 +169,7 @@ bool ScanPictureData::RegisterCacheFiles(const std::string& baseName, int32_t ca
     scanCacheFdMap_[baseName + META_SUFFIX] = INVALID_FD;
 
     // Record owner for per-app cleanup
-    baseNameOwnerMap_[baseName] = callerPid;
+    ownerBaseNames_[callerPid].insert(baseName);
 
     return true;
 }
@@ -246,21 +246,15 @@ void ScanPictureData::CleanByOwner(int32_t ownerPid)
     }
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // Collect baseNames owned by this caller
-    std::vector<std::string> baseNames;
-    for (auto &[bn, pid] : baseNameOwnerMap_) {
-        if (pid == ownerPid) {
-            baseNames.push_back(bn);
-        }
-    }
-    if (baseNames.empty()) {
+    auto ownerIt = ownerBaseNames_.find(ownerPid);
+    if (ownerIt == ownerBaseNames_.end()) {
         return;
     }
 
     static const std::vector<std::string> suffixes = {
         JPG_EXTENSION, RAW_SUFFIX, META_SUFFIX, PNG_SUFFIX, TIFF_EXTENSION
     };
-    for (const auto &bn : baseNames) {
+    for (const auto &bn : ownerIt->second) {
         // Close fds and unlink files for all known suffixes
         for (const auto &suffix : suffixes) {
             std::string path = bn + suffix;
@@ -283,9 +277,9 @@ void ScanPictureData::CleanByOwner(int32_t ownerPid)
                 ++taskIt;
             }
         }
-        baseNameOwnerMap_.erase(bn);
         SCAN_HILOGI("CleanByOwner cleaned baseName=%{private}s, ownerPid=%{public}d", bn.c_str(), ownerPid);
     }
+    ownerBaseNames_.erase(ownerIt);
 }
 
 void ScanPictureData::CleanDiskCache()
