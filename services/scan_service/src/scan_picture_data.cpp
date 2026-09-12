@@ -238,6 +238,20 @@ void ScanPictureData::RegisterExportedResult(const std::string& baseName, int32_
     SCAN_HILOGI("Registered exported fd: %{public}d, path=%{private}s", fd, fullPath.c_str());
 }
 
+void ScanPictureData::CleanCacheByPath(const std::string& path)
+{
+    auto fdIt = scanCacheFdMap_.find(path);
+    if (fdIt != scanCacheFdMap_.end()) {
+        if (fdIt->second != INVALID_FD) {
+            fdsan_close_with_tag(fdIt->second, SCAN_LOG_DOMAIN);
+        }
+        scanCacheFdMap_.erase(fdIt);
+    }
+    if (ScanServiceUtils::IsPathValid(path)) {
+        unlink(path.c_str());
+    }
+}
+
 void ScanPictureData::CleanByOwner(int32_t ownerPid)
 {
     if (ownerPid <= 0) {
@@ -257,17 +271,7 @@ void ScanPictureData::CleanByOwner(int32_t ownerPid)
     for (const auto &bn : ownerIt->second) {
         // Close fds and unlink files for all known suffixes
         for (const auto &suffix : suffixes) {
-            std::string path = bn + suffix;
-            auto fdIt = scanCacheFdMap_.find(path);
-            if (fdIt != scanCacheFdMap_.end()) {
-                if (fdIt->second != INVALID_FD) {
-                    fdsan_close_with_tag(fdIt->second, SCAN_LOG_DOMAIN);
-                }
-                scanCacheFdMap_.erase(fdIt);
-            }
-            if (ScanServiceUtils::IsPathValid(path)) {
-                unlink(path.c_str());
-            }
+            CleanCacheByPath(bn + suffix);
         }
         // Remove scan tasks whose imageRealPath belongs to this baseName
         for (auto taskIt = scanTaskMap_.begin(); taskIt != scanTaskMap_.end();) {
