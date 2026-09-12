@@ -240,8 +240,7 @@ void ScanPictureData::RegisterExportedResult(const std::string& baseName, int32_
 
 void ScanPictureData::CleanCacheByPath(const std::string& path)
 {
-    auto fdIt = scanCacheFdMap_.find(path);
-    if (fdIt != scanCacheFdMap_.end()) {
+    if (auto fdIt = scanCacheFdMap_.find(path); fdIt != scanCacheFdMap_.end()) {
         if (fdIt->second != INVALID_FD) {
             fdsan_close_with_tag(fdIt->second, SCAN_LOG_DOMAIN);
         }
