@@ -253,8 +253,7 @@ int32_t ScanServiceAbility::ExitScan()
     // waiting for the 60s death-detection fallback. Best-effort: log failure but
     // still proceed to CleanByOwner.
     if (openedScanner_.has_value() && openedScanner_->callerPid == callerPid) {
-        int32_t ret = CloseScanner(openedScanner_->scannerId);
-        if (ret != E_SCAN_NONE) {
+        if (int32_t ret = CloseScanner(openedScanner_->scannerId); ret != E_SCAN_NONE) {
             SCAN_HILOGW("ExitScan CloseScanner failed: %{public}d, continue CleanByOwner", ret);
         }
     }
