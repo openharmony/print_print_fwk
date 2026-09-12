@@ -264,12 +264,9 @@ void ScanPictureData::CleanByOwner(int32_t ownerPid)
         return;
     }
 
-    static const std::vector<std::string> suffixes = {
-        JPG_EXTENSION, RAW_SUFFIX, META_SUFFIX, PNG_SUFFIX, TIFF_EXTENSION
-    };
     for (const auto &bn : ownerIt->second) {
         // Close fds and unlink files for all known suffixes
-        for (const auto &suffix : suffixes) {
+        for (const auto &suffix : SCAN_PICTURE_SUFFIXES) {
             CleanCacheByPath(bn + suffix);
         }
         // Remove scan tasks whose imageRealPath belongs to this baseName
