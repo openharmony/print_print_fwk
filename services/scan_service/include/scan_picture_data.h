@@ -46,6 +46,7 @@ private:
     int32_t GetRandomNumber(const int32_t &lowerBoundary, const int32_t &upperBoundary);
     int32_t GetElapsedSeconds(const SteadyTimePoint &preTime);
     int32_t HandleCompletedScanPicture(ScanProgress& scanProgress, ScanProgress& prog);
+    void CleanCacheByPath(const std::string& path);
     mutable std::mutex mutex_;
     std::queue<int32_t> scanQueue_;
     std::map<std::string, int32_t> scanCacheFdMap_;
