@@ -138,38 +138,17 @@ void VendorPpdDriver::OnStartDiscovery()
         return;
     }
     int32_t expected = DISCOVERY_IDLE;
-    if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-        // IDLE -> RUNNING: spawn
-    } else if (expected == DISCOVERY_RUNNING) {
-        if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_WAITING)) {
-            PRINT_HILOGI("OnStartDiscovery discovery queued as waiting");
-            return;
-        }
-        // Thread completed (IDLE), restart
-        if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-            PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
-            return;
-        }
-    } else {
-        PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
+    if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
+        PRINT_HILOGW("OnStartDiscovery discovery already running, reject");
         return;
     }
     wptr<VendorPpdDriver> weakThis = this;
     std::thread([weakThis]() {
         sptr<VendorPpdDriver> self = weakThis.promote();
         PRINT_CHECK_NULL_RETURN_VOID(self);
-        do {
-            self->DiscoverBackendPrinters();
-            int32_t exp = DISCOVERY_RUNNING;
-            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE)) {
-                break;
-            }
-            exp = DISCOVERY_WAITING;
-            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_RUNNING)) {
-                continue;
-            }
-            break;
-        } while (true);
+        self->DiscoverBackendPrinters();
+        int32_t exp = DISCOVERY_RUNNING;
+        self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE);
     }).detach();
 }
 
