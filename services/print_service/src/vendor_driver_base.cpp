@@ -124,15 +124,14 @@ std::string VendorDriverBase::GetGlobalPrinterId(const std::string &printerId)
 void VendorDriverBase::OnPrinterStateQueried(const std::string &printerId, Print_PrinterState state)
 {
     PRINT_HILOGD("state queried: %{public}d for %{public}s", static_cast<int>(state), printerId.c_str());
-    auto vm = GetVendorManager();
-    if (vm == nullptr) {
+    if (vendorManager == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     auto vendorStatus = GetMonitorVendorStatus(printerId);
     if (vendorStatus != nullptr) {
         vendorStatus->state = state;
-        bool updated = vm->OnPrinterStatusChanged(GetVendorName(), printerId, *vendorStatus);
+        bool updated = vendorManager->OnPrinterStatusChanged(GetVendorName(), printerId, *vendorStatus);
         vendorStatus->lastUpdateTime = GetNowTime();
         if (state == PRINTER_IDLE && !updated) {
             OnQueryCapability(printerId, 0);
