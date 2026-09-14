@@ -44,6 +44,8 @@ private:
     std::string QueryPpdName(const std::string &makeAndModel);
     void DiscoverBackendPrinters();
     bool TryConnectByPpdDriver(const PrinterInfo &printerInfo);
+    bool TryStartDiscovery();
+    bool ShouldContinueDiscovery();
 
 private:
     std::string connectingVendorGroup;
