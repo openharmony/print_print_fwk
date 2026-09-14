@@ -222,6 +222,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
 
     FuzzedDataProvider dataProvider(data, size);
+    static bool initialized = false;
+    if (!initialized) {
+        OHOS::Print::PrintServiceAbility::GetInstance()->OnStart();
+        initialized = true;
+    }
     OHOS::Print::TestAllFunction(data, size, &dataProvider);
     OHOS::Print::PrintServiceAbilityMockPermission::MockPermission();
     OHOS::Print::TestAllFunction(data, size, &dataProvider);
