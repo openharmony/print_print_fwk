@@ -24,6 +24,12 @@ namespace OHOS::Print {
 
 constexpr int PRINT_CALL_OK = 0;
 
+enum DiscoveryState : int32_t {
+    DISCOVERY_IDLE = 0,
+    DISCOVERY_RUNNING = 1,
+    DISCOVERY_WAITING = 2,
+};
+
 #define PRINT_MAX_PRINT_COUNT 1000
 #define PRINT_MAX_FILE_LIST_SIZE 100
 #define PRINT_MAX_PPD_COUNT 4096
