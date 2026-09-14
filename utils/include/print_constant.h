@@ -24,12 +24,6 @@ namespace OHOS::Print {
 
 constexpr int PRINT_CALL_OK = 0;
 
-enum DiscoveryState : int32_t {
-    DISCOVERY_IDLE = 0,
-    DISCOVERY_RUNNING = 1,
-    DISCOVERY_WAITING = 2,
-};
-
 #define PRINT_MAX_PRINT_COUNT 1000
 #define PRINT_MAX_FILE_LIST_SIZE 100
 #define PRINT_MAX_PPD_COUNT 4096
@@ -365,6 +359,12 @@ enum DefaultPrinterType {
 enum WatermarkHandleResult {
     WATERMARK_HANDLE_SUCCESS = 0,  // Processing completed successfully
     WATERMARK_HANDLE_FAILURE = 1,  // Processing failed
+};
+
+enum DiscoveryState {
+    DISCOVERY_IDLE = 0,
+    DISCOVERY_RUNNING = 1,
+    DISCOVERY_WAITING = 2,
 };
 
 inline const std::string PRINTER_DISCOVER_EVENT_TYPE = "printerDiscover";
