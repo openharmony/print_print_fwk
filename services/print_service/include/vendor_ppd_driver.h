@@ -27,12 +27,6 @@
 namespace OHOS {
 namespace Print {
 
-enum DiscoveryState : int32_t {
-    DISCOVERY_IDLE = 0,
-    DISCOVERY_RUNNING = 1,
-    DISCOVERY_WAITING = 2,
-};
-
 class VendorPpdDriver : public VendorDriverBase {
 public:
     VendorPpdDriver();
