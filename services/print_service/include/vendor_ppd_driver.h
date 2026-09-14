@@ -20,7 +20,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
-#include "refbase.h"
+#include <memory>
 #include "vendor_driver_base.h"
 #include "vendor_manager.h"
 
