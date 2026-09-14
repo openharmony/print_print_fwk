@@ -146,7 +146,10 @@ void VendorPpdDriver::OnStartDiscovery()
             return;
         }
         // Thread completed (IDLE), restart
-        discoveryState_.store(DISCOVERY_RUNNING);
+        if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
+            PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
+            return;
+        }
     } else {
         PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
         return;
