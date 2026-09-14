@@ -184,7 +184,7 @@ HWTEST_F(VendorPpdDriverTest, DiscoverBackendPrinters_ShouldWorkNormolly, TestSi
 HWTEST_F(VendorPpdDriverTest, StartAndStopDiscovery_ShouldWorkNormolly, TestSize.Level1)
 {
     MockVendorManager mock;
-    sptr<VendorPpdDriver> vendorDriver = new VendorPpdDriver();
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
     EXPECT_TRUE(vendorDriver->Init(&mock));
     PrinterInfo info;
     info.SetPrinterId("test1");
@@ -299,7 +299,7 @@ HWTEST_F(VendorPpdDriverTest, OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning, 
 HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldJoinPreviousThread_WhenCalledTwice, TestSize.Level1)
 {
     MockVendorManager mock;
-    sptr<VendorPpdDriver> vendorDriver = new VendorPpdDriver();
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
     EXPECT_TRUE(vendorDriver->Init(&mock));
     EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
         .Times(2)

@@ -102,13 +102,12 @@ std::string VendorPpdDriver::QueryPpdName(const std::string &makeAndModel)
 void VendorPpdDriver::DiscoverBackendPrinters()
 {
     PRINT_HILOGI("DiscoverBackendPrinters enter");
-    std::shared_ptr<IPrinterVendorManager> vm(vendorManager, [](IPrinterVendorManager *) {});
-    if (vm == nullptr) {
+    if (vendorManager == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     std::vector<PrinterInfo> printers = {};
-    if (vm->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
+    if (vendorManager->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
         PRINT_HILOGW("Discovery backend printer fail.");
         return;
     }
@@ -119,11 +118,11 @@ void VendorPpdDriver::DiscoverBackendPrinters()
     }
     for (const auto &printer : printers) {
         discoveredPrinters_[printer.GetPrinterId()] = true;
-        vm->AddPrinterToDiscovery(GetVendorName(), printer);
+        vendorManager->AddPrinterToDiscovery(GetVendorName(), printer);
     }
     for (const auto &[printerId, isDiscovered] : discoveredPrinters_) {
         if (!isDiscovered) {
-            vm->RemovePrinterFromDiscovery(GetVendorName(), printerId);
+            vendorManager->RemovePrinterFromDiscovery(GetVendorName(), printerId);
         }
     }
     PRINT_HILOGI("DiscoverBackendPrinters done");
@@ -153,10 +152,8 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
         return;
     }
-    wptr<VendorPpdDriver> weakThis = this;
-    std::thread([weakThis]() {
-        sptr<VendorPpdDriver> self = weakThis.promote();
-        PRINT_CHECK_NULL_RETURN_VOID(self);
+    auto self = std::static_pointer_cast<VendorPpdDriver>(shared_from_this());
+    std::thread([self]() {
         do {
             self->DiscoverBackendPrinters();
             int32_t exp = DISCOVERY_RUNNING;
