@@ -47,7 +47,7 @@ static inline uint64_t GetNowTime()
 enum ConnectMethod { ID_AUTO = 0, IP_AUTO };
 enum ConnectState { STATE_NONE = 0, STATE_CONNECTING, STATE_QUERYING };
 
-class IPrinterVendorManager {
+class IPrinterVendorManager : public virtual RefBase {
 public:
     virtual int32_t AddPrinterToDiscovery(const std::string &vendorName, const PrinterInfo &printerInfo) = 0;
     virtual int32_t UpdatePrinterToDiscovery(const std::string &vendorName, const PrinterInfo &printerInfo) = 0;
@@ -124,7 +124,8 @@ public:
     void OnPrinterStateQueried(const std::string &printerId, Print_PrinterState state);
 
 protected:
-    IPrinterVendorManager *vendorManager = nullptr;
+    wptr<IPrinterVendorManager> vendorManager;
+    sptr<IPrinterVendorManager> GetVendorManager() { return vendorManager.promote(); }
     std::mutex statusMapMutex;
     std::map<std::string, std::shared_ptr<PrinterVendorStatus>> vendorStatusMap;
     ThreadSyncWait syncWait;

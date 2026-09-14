@@ -42,7 +42,7 @@ public:
 
 private:
     std::string QueryPpdName(const std::string &makeAndModel);
-    void DiscoverBackendPrinters();
+    void DiscoverBackendPrinters(sptr<IPrinterVendorManager> vm = nullptr);
     bool TryConnectByPpdDriver(const PrinterInfo &printerInfo);
 
 private:

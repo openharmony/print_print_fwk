@@ -299,7 +299,8 @@ void VendorBsuniDriver::OnCreate()
         PRINT_HILOGW("vendorExtension is null");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
@@ -317,7 +318,7 @@ void VendorBsuniDriver::OnCreate()
     printServiceAbility.onPropertiesQueried = OnPropertiesQueried;
     
 #ifdef ENTERPRISE_ENABLE
-    if (vendorManager->IsEnterprise()) {
+    if (vm->IsEnterprise()) {
         PRINT_HILOGI("vendorManager onCreate in enterprise");
         int32_t result = vendorExtension->onCreate(&printServiceAbility, CUPS_ENTERPRISE_ROOT_DIR);
         PRINT_HILOGI("OnCreate quit: %{public}d", result);
@@ -459,12 +460,13 @@ void VendorBsuniDriver::OnDiscoveredPrinterAdd(std::shared_ptr<PrinterInfo> prin
         PRINT_HILOGW("printerInfo is null");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     printerInfo->SetOriginId(GetGlobalPrinterId(printerInfo->GetPrinterId()));
-    vendorManager->AddPrinterToDiscovery(GetVendorName(), *printerInfo);
+    vm->AddPrinterToDiscovery(GetVendorName(), *printerInfo);
 }
 
 void VendorBsuniDriver::OnDiscoveredPrinterRemove(std::shared_ptr<std::string> printerId)
@@ -473,11 +475,12 @@ void VendorBsuniDriver::OnDiscoveredPrinterRemove(std::shared_ptr<std::string> p
         PRINT_HILOGW("printerId is null");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
-    vendorManager->RemovePrinterFromDiscovery(GetVendorName(), *printerId);
+    vm->RemovePrinterFromDiscovery(GetVendorName(), *printerId);
 }
 
 void VendorBsuniDriver::OnCupsPrinterAdd(std::shared_ptr<PrinterInfo> printerInfo, std::shared_ptr<std::string> ppdData)
@@ -486,13 +489,14 @@ void VendorBsuniDriver::OnCupsPrinterAdd(std::shared_ptr<PrinterInfo> printerInf
         PRINT_HILOGW("printerInfo is null");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     printerInfo->SetOriginId(GetGlobalPrinterId(printerInfo->GetPrinterId()));
     std::string vendorName = GetVendorName();
-    if (vendorManager->UpdatePrinterToDiscovery(vendorName, *printerInfo) != EXTENSION_ERROR_NONE) {
+    if (vm->UpdatePrinterToDiscovery(vendorName, *printerInfo) != EXTENSION_ERROR_NONE) {
         PRINT_HILOGW("update printer to discovery fail");
         return;
     }
@@ -500,7 +504,7 @@ void VendorBsuniDriver::OnCupsPrinterAdd(std::shared_ptr<PrinterInfo> printerInf
         PRINT_HILOGW("ppdData is null");
         return;
     }
-    vendorManager->AddPrinterToCupsWithPpd(vendorName, printerInfo->GetPrinterId(), BSUNI_PPD_NAME, *ppdData);
+    vm->AddPrinterToCupsWithPpd(vendorName, printerInfo->GetPrinterId(), BSUNI_PPD_NAME, *ppdData);
 }
 
 void VendorBsuniDriver::OnCupsPrinterRemove(std::shared_ptr<std::string> printerId)
@@ -509,11 +513,12 @@ void VendorBsuniDriver::OnCupsPrinterRemove(std::shared_ptr<std::string> printer
         PRINT_HILOGW("printerId is null");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
-    vendorManager->RemovePrinterFromCups(GetVendorName(), *printerId);
+    vm->RemovePrinterFromCups(GetVendorName(), *printerId);
 }
 
 void VendorBsuniDriver::OnPpdQueried(std::shared_ptr<std::string> printerId, std::shared_ptr<std::string> ppdData)
@@ -522,12 +527,13 @@ void VendorBsuniDriver::OnPpdQueried(std::shared_ptr<std::string> printerId, std
         PRINT_HILOGW("invalid parameters");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     PRINT_HILOGI("ppdData queried");
-    if (vendorManager->OnPrinterPpdQueried(GetVendorName(), *printerId, BSUNI_PPD_NAME, *ppdData)) {
+    if (vm->OnPrinterPpdQueried(GetVendorName(), *printerId, BSUNI_PPD_NAME, *ppdData)) {
         if (vendorExtension != nullptr && vendorExtension->onConnectPrinter != nullptr) {
             vendorExtension->onConnectPrinter(printerId->c_str());
         }
@@ -540,7 +546,8 @@ void VendorBsuniDriver::OnStateQueried(std::shared_ptr<std::string> printerId, s
         PRINT_HILOGW("invalid parameters");
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
@@ -560,13 +567,14 @@ void VendorBsuniDriver::OnIppRawDataQueried(std::shared_ptr<std::string> printer
         PRINT_HILOGW("invalid parameters");
         return;
     }
-    PRINT_CHECK_NULL_RETURN_VOID_WITH_FUNC(vendorManager);
+    auto vm = GetVendorManager();
+    PRINT_CHECK_NULL_RETURN_VOID_WITH_FUNC(vm);
     PRINT_HILOGI("IPP raw data queried");
     if (rawData->size() > MAX_ANONYMIZE_IP_LEN) {
         PRINT_HILOGW("IPP raw data too large, size = %{public}zu, skip", rawData->size());
         return;
     }
-    vendorManager->OnPrinterIppRawDataQueried(*printerId, AnonymizeIpInString(*rawData));
+    vm->OnPrinterIppRawDataQueried(*printerId, AnonymizeIpInString(*rawData));
 }
 
 std::string VendorBsuniDriver::CreateUriByIpAndProtocol(const std::string &ip, const std::string &protocol)
@@ -593,7 +601,8 @@ void VendorBsuniDriver::OnPrinterCapabilityQueried(std::shared_ptr<PrinterInfo> 
             HisysEventUtil::BSUNI_CAPABILITY_INFO_NULL);
         return;
     }
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         HisysEventUtil::ReportConnectFault(
             HisysEventUtil::SCENE_BSUNI_CONNECT,
@@ -604,18 +613,19 @@ void VendorBsuniDriver::OnPrinterCapabilityQueried(std::shared_ptr<PrinterInfo> 
     if (!TryBuildPrinterUri(*printerInfo)) {
         return;
     }
-    vendorManager->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo);
-    vendorManager->OnPrinterCapabilityQueried(GetVendorName(), *printerInfo);
+    vm->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo);
+    vm->OnPrinterCapabilityQueried(GetVendorName(), *printerInfo);
     syncWait.Notify();
     PRINT_HILOGD("OnPrinterCapabilityQueried quit");
 }
 
 bool VendorBsuniDriver::TryBuildPrinterUri(PrinterInfo &printerInfo)
 {
-    std::string connectQueue = vendorManager->GetConnectingQueue();
-    std::string connectProtocol = vendorManager->GetConnectingProtocol();
+    auto vm = GetVendorManager();
+    std::string connectQueue = vm->GetConnectingQueue();
+    std::string connectProtocol = vm->GetConnectingProtocol();
     if (!connectQueue.empty() && (connectProtocol == "ipp" || connectProtocol == "ipps")
-        && !vendorManager->IsBsunidriverSupport(printerInfo)) {
+        && !vm->IsBsunidriverSupport(printerInfo)) {
         PRINT_HILOGW("Queue specified but no URI found, connect failed!");
         HisysEventUtil::ReportConnectFault(
             HisysEventUtil::SCENE_BSUNI_CONNECT,
@@ -633,7 +643,7 @@ bool VendorBsuniDriver::TryBuildPrinterUri(PrinterInfo &printerInfo)
             HisysEventUtil::BSUNI_CAPABILITY_NO_URI);
         return false;
     }
-    std::string connectIp = vendorManager->GetConnectingPrinter();
+    std::string connectIp = vm->GetConnectingPrinter();
     if (connectIp.empty() || connectIp != printerInfo.GetPrinterId()) {
         PRINT_HILOGW("Wrong printerIp!");
         HisysEventUtil::ReportConnectFault(
@@ -668,8 +678,9 @@ void VendorBsuniDriver::OnSwitchSpace()
         PRINT_HILOGW("onSwitchSpace is null");
         return;
     }
-    PRINT_CHECK_NULL_RETURN_VOID(vendorManager);
-    if (vendorManager->IsEnterprise()) {
+    auto vm = GetVendorManager();
+    PRINT_CHECK_NULL_RETURN_VOID(vm);
+    if (vm->IsEnterprise()) {
         PRINT_HILOGI("[] OnSwitchSpace in enterprise");
         int32_t result = vendorExtension->onSwitchSpace(CUPS_ENTERPRISE_ROOT_DIR);
         PRINT_HILOGI("onSwitchSpace quit: %{public}d", result);
