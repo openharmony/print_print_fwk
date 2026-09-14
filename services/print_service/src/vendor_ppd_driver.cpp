@@ -102,12 +102,13 @@ std::string VendorPpdDriver::QueryPpdName(const std::string &makeAndModel)
 void VendorPpdDriver::DiscoverBackendPrinters()
 {
     PRINT_HILOGI("DiscoverBackendPrinters enter");
-    std::vector<PrinterInfo> printers = {};
-    if (vendorManager == nullptr) {
+    std::shared_ptr<IPrinterVendorManager> vm(vendorManager, [](IPrinterVendorManager *) {});
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
-    if (vendorManager->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
+    std::vector<PrinterInfo> printers = {};
+    if (vm->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
         PRINT_HILOGW("Discovery backend printer fail.");
         return;
     }
@@ -116,15 +117,13 @@ void VendorPpdDriver::DiscoverBackendPrinters()
     for (auto &[printerId, isDiscovered] : discoveredPrinters_) {
         isDiscovered = false;
     }
-    // add or update new printer is discovered
     for (const auto &printer : printers) {
         discoveredPrinters_[printer.GetPrinterId()] = true;
-        vendorManager->AddPrinterToDiscovery(GetVendorName(), printer);
+        vm->AddPrinterToDiscovery(GetVendorName(), printer);
     }
-    // remove non-discovered printer
     for (const auto &[printerId, isDiscovered] : discoveredPrinters_) {
         if (!isDiscovered) {
-            vendorManager->RemovePrinterFromDiscovery(GetVendorName(), printerId);
+            vm->RemovePrinterFromDiscovery(GetVendorName(), printerId);
         }
     }
     PRINT_HILOGI("DiscoverBackendPrinters done");
