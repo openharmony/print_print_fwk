@@ -42,7 +42,7 @@ ohos_fuzztest("PrinterEventCallbackFuzzTest") {
     "-Dprotected=public",
   ]
 
-  cflags_cc = []
+  cflags_cc = [ "-DUNIT_TEST" ]
 
   deps = [
     "${print_path}/etc/init:printservice.rc",
