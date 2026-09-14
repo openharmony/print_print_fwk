@@ -48,11 +48,12 @@ std::string VendorPpdDriver::GetVendorName()
 
 bool VendorPpdDriver::OnQueryCapability(const std::string &printerId, int timeout)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGE("vendorManager is null");
         return false;
     }
-    auto printerInfo = vendorManager->QueryDiscoveredPrinterInfoById(GetVendorName(), printerId);
+    auto printerInfo = vm->QueryDiscoveredPrinterInfoById(GetVendorName(), printerId);
     if (printerInfo == nullptr) {
         PRINT_HILOGE("printer is not discovered.");
         return false;
@@ -87,27 +88,31 @@ bool VendorPpdDriver::QueryProperty(const std::string &printerId, const std::str
 
 std::string VendorPpdDriver::QueryPpdName(const std::string &makeAndModel)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return std::string();
     }
     std::string ppdName;
-    if (!vendorManager->QueryPPDInformation(makeAndModel, ppdName)) {
+    if (!vm->QueryPPDInformation(makeAndModel, ppdName)) {
         PRINT_HILOGW("QueryPPDInformation fail. printerMake = %{public}s", makeAndModel.c_str());
         return std::string();
     }
     return ppdName;
 }
 
-void VendorPpdDriver::DiscoverBackendPrinters()
+void VendorPpdDriver::DiscoverBackendPrinters(sptr<IPrinterVendorManager> vm)
 {
     PRINT_HILOGI("DiscoverBackendPrinters enter");
-    std::vector<PrinterInfo> printers = {};
-    if (vendorManager == nullptr) {
+    if (vm == nullptr) {
+        vm = GetVendorManager();
+    }
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
-    if (vendorManager->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
+    std::vector<PrinterInfo> printers = {};
+    if (vm->DiscoverBackendPrinters(GetVendorName(), printers) != E_PRINT_NONE) {
         PRINT_HILOGW("Discovery backend printer fail.");
         return;
     }
@@ -119,12 +124,12 @@ void VendorPpdDriver::DiscoverBackendPrinters()
     // add or update new printer is discovered
     for (const auto &printer : printers) {
         discoveredPrinters_[printer.GetPrinterId()] = true;
-        vendorManager->AddPrinterToDiscovery(GetVendorName(), printer);
+        vm->AddPrinterToDiscovery(GetVendorName(), printer);
     }
     // remove non-discovered printer
     for (const auto &[printerId, isDiscovered] : discoveredPrinters_) {
         if (!isDiscovered) {
-            vendorManager->RemovePrinterFromDiscovery(GetVendorName(), printerId);
+            vm->RemovePrinterFromDiscovery(GetVendorName(), printerId);
         }
     }
     PRINT_HILOGI("DiscoverBackendPrinters done");
@@ -133,7 +138,8 @@ void VendorPpdDriver::DiscoverBackendPrinters()
 void VendorPpdDriver::OnStartDiscovery()
 {
     PRINT_HILOGI("OnStartDiscovery enter");
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("OnStartDiscovery vendorManager is null.");
         return;
     }
@@ -155,11 +161,11 @@ void VendorPpdDriver::OnStartDiscovery()
         return;
     }
     wptr<VendorPpdDriver> weakThis = this;
-    std::thread([weakThis]() {
+    std::thread([weakThis, vm]() {
         sptr<VendorPpdDriver> self = weakThis.promote();
         PRINT_CHECK_NULL_RETURN_VOID(self);
         do {
-            self->DiscoverBackendPrinters();
+            self->DiscoverBackendPrinters(vm);
             int32_t exp = DISCOVERY_RUNNING;
             if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE)) {
                 break;
@@ -181,7 +187,8 @@ void VendorPpdDriver::OnStopDiscovery()
 
 bool VendorPpdDriver::TryConnectByPpdDriver(const PrinterInfo &printerInfo)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return false;
     }
@@ -192,7 +199,7 @@ bool VendorPpdDriver::TryConnectByPpdDriver(const PrinterInfo &printerInfo)
         PRINT_HILOGI("no matched ppd");
         return false;
     }
-    if (vendorManager->AddPrinterToCupsWithPpd(
+    if (vm->AddPrinterToCupsWithPpd(
         GetVendorName(), VendorManager::ExtractPrinterId(printerId), ppdName, "") != EXTENSION_ERROR_NONE) {
         PRINT_HILOGI("AddPrinterToCupsWithPpd fail.");
         return false;

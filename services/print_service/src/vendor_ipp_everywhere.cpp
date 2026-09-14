@@ -62,11 +62,12 @@ void VendorIppEveryWhere::OnStopDiscovery() {}
 
 bool VendorIppEveryWhere::OnQueryCapability(const std::string &printerId, int timeout)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return false;
     }
-    auto printerInfo = vendorManager->QueryDiscoveredPrinterInfoById(GetVendorName(), printerId);
+    auto printerInfo = vm->QueryDiscoveredPrinterInfoById(GetVendorName(), printerId);
     if (printerInfo == nullptr) {
         PRINT_HILOGW("invalid printerId");
         return false;
@@ -148,7 +149,8 @@ void VendorIppEveryWhere::ConnectPrinterByPrinterIdAndUri(const std::string &pri
 
 bool VendorIppEveryWhere::UpdateCapability(std::shared_ptr<PrinterInfo> printerInfo)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return false;
     }
@@ -157,7 +159,7 @@ bool VendorIppEveryWhere::UpdateCapability(std::shared_ptr<PrinterInfo> printerI
         return false;
     }
     PRINT_HILOGI("get printer info success");
-    if (vendorManager->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo) != EXTENSION_ERROR_NONE) {
+    if (vm->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo) != EXTENSION_ERROR_NONE) {
         PRINT_HILOGW("UpdatePrinterToDiscovery fail");
         return false;
     }
@@ -166,7 +168,8 @@ bool VendorIppEveryWhere::UpdateCapability(std::shared_ptr<PrinterInfo> printerI
 
 bool VendorIppEveryWhere::ConnectPrinter(std::shared_ptr<PrinterInfo> printerInfo)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return false;
     }
@@ -175,16 +178,16 @@ bool VendorIppEveryWhere::ConnectPrinter(std::shared_ptr<PrinterInfo> printerInf
         return false;
     }
     PRINT_HILOGI("get printer info success");
-    auto discoveredInfo = vendorManager->QueryDiscoveredPrinterInfoById(GetVendorName(), printerInfo->GetPrinterId());
+    auto discoveredInfo = vm->QueryDiscoveredPrinterInfoById(GetVendorName(), printerInfo->GetPrinterId());
     if (discoveredInfo != nullptr) {
         printerInfo->SetPrinterName(discoveredInfo->GetPrinterName());
     }
-    if (vendorManager->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo) != EXTENSION_ERROR_NONE) {
+    if (vm->UpdatePrinterToDiscovery(GetVendorName(), *printerInfo) != EXTENSION_ERROR_NONE) {
         PRINT_HILOGW("UpdatePrinterToDiscovery fail");
         return false;
     }
     PRINT_HILOGI("UpdatePrinterToDiscovery success");
-    if (vendorManager->AddPrinterToCupsWithPpd(GetVendorName(), printerInfo->GetPrinterId(), DEFAULT_PPD_NAME, "") !=
+    if (vm->AddPrinterToCupsWithPpd(GetVendorName(), printerInfo->GetPrinterId(), DEFAULT_PPD_NAME, "") !=
         EXTENSION_ERROR_NONE) {
         PRINT_HILOGW("AddPrinterToCupsWithPpd fail");
         return false;
@@ -194,12 +197,13 @@ bool VendorIppEveryWhere::ConnectPrinter(std::shared_ptr<PrinterInfo> printerInf
 
 std::shared_ptr<PrinterInfo> VendorIppEveryWhere::QueryPrinterInfoByUri(const std::string &uri)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return nullptr;
     }
     PrinterCapability printerCap;
-    if (!vendorManager->QueryPrinterCapabilityByUri(uri, printerCap)) {
+    if (!vm->QueryPrinterCapabilityByUri(uri, printerCap)) {
         PRINT_HILOGW("QueryPrinterCapabilityByUri fail");
         return nullptr;
     }
@@ -248,12 +252,13 @@ std::shared_ptr<PrinterInfo> VendorIppEveryWhere::ConvertCapabilityToInfo(const 
 
 void VendorIppEveryWhere::QueryPrinterStatusByUri(const std::string &uri)
 {
-    if (vendorManager == nullptr) {
+    auto vm = GetVendorManager();
+    if (vm == nullptr) {
         PRINT_HILOGW("vendorManager is null");
         return;
     }
     PrinterStatus status = PRINTER_STATUS_UNAVAILABLE;
-    if (!vendorManager->QueryPrinterStatusByUri(uri, status)) {
+    if (!vm->QueryPrinterStatusByUri(uri, status)) {
         return;
     }
     OnPrinterStateQueried(uri, static_cast<Print_PrinterState>(status));
