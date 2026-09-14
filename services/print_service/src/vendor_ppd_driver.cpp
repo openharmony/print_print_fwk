@@ -128,6 +128,40 @@ void VendorPpdDriver::DiscoverBackendPrinters()
     PRINT_HILOGI("DiscoverBackendPrinters done");
 }
 
+bool VendorPpdDriver::TryStartDiscovery()
+{
+    int32_t expected = DISCOVERY_IDLE;
+    if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
+        return true;
+    }
+    if (expected == DISCOVERY_RUNNING) {
+        if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_WAITING)) {
+            PRINT_HILOGI("OnStartDiscovery discovery queued as waiting");
+            return false;
+        }
+        if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
+            PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
+            return false;
+        }
+        return true;
+    }
+    PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
+    return false;
+}
+
+bool VendorPpdDriver::ShouldContinueDiscovery()
+{
+    int32_t exp = DISCOVERY_RUNNING;
+    if (discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE)) {
+        return false;
+    }
+    exp = DISCOVERY_WAITING;
+    if (discoveryState_.compare_exchange_strong(exp, DISCOVERY_RUNNING)) {
+        return true;
+    }
+    return false;
+}
+
 void VendorPpdDriver::OnStartDiscovery()
 {
     PRINT_HILOGI("OnStartDiscovery enter");
@@ -135,37 +169,14 @@ void VendorPpdDriver::OnStartDiscovery()
         PRINT_HILOGW("OnStartDiscovery vendorManager is null.");
         return;
     }
-    int32_t expected = DISCOVERY_IDLE;
-    if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-        // IDLE -> RUNNING: spawn
-    } else if (expected == DISCOVERY_RUNNING) {
-        if (discoveryState_.compare_exchange_strong(expected, DISCOVERY_WAITING)) {
-            PRINT_HILOGI("OnStartDiscovery discovery queued as waiting");
-            return;
-        }
-        // Thread completed (IDLE), restart
-        if (!discoveryState_.compare_exchange_strong(expected, DISCOVERY_RUNNING)) {
-            PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
-            return;
-        }
-    } else {
-        PRINT_HILOGW("OnStartDiscovery discovery already waiting, reject");
+    if (!TryStartDiscovery()) {
         return;
     }
     auto self = std::static_pointer_cast<VendorPpdDriver>(shared_from_this());
     std::thread([self]() {
         do {
             self->DiscoverBackendPrinters();
-            int32_t exp = DISCOVERY_RUNNING;
-            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_IDLE)) {
-                break;
-            }
-            exp = DISCOVERY_WAITING;
-            if (self->discoveryState_.compare_exchange_strong(exp, DISCOVERY_RUNNING)) {
-                continue;
-            }
-            break;
-        } while (true);
+        } while (self->ShouldContinueDiscovery());
     }).detach();
 }
 
