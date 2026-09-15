@@ -189,6 +189,15 @@ ErrCode PrintShellCommand::RunAsStartPrintJob()
         }
     }
 
+    if (params.printerId == VIRTUAL_PRINTER_ID) {
+        CloseFdList(fdList);
+        OutputError(ERR_VIRTUAL_PRINTER_NOT_SUPPORTED,
+            "Virtual printer is not supported by this command",
+            "Virtual printer jobs are handled by the print application, "
+            "please use a physical printer instead", resultReceiver_);
+        return ERR_INVALID_VALUE;
+    }
+
     if (params.printerUri.empty()) {
         int32_t uriRet = ResolvePrinterUri(params.printerId, params.printerUri);
         if (uriRet != ERR_OK) {
