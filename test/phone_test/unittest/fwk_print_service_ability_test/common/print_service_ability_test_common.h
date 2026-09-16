@@ -111,6 +111,7 @@ public:
     MOCK_METHOD2(QueryPrinterInfoByPrinterId, int32_t(const std::string &printerId, PrinterInfo &info));
     MOCK_METHOD2(QueryPPDInformation, bool(const std::string &makeModel, std::string &ppdName));
     MOCK_METHOD0(GetCallerBundleName, std::string());
+    MOCK_METHOD0(IsOversea, bool());
     MOCK_METHOD5(DoAddPrinterToCupsEnable, bool(const std::string &printerUri, const std::string &printerName,
         std::shared_ptr<PrinterInfo> printerInfo, const std::string &ppdName, const std::string &ppdData));
     MOCK_METHOD1(IsPpdNameValid, bool(const std::string &ppdName));

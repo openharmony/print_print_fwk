@@ -164,7 +164,7 @@ public:
     void HandleWebPrinterUninstall();
     bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
     bool IsExtensionPrintJob(const std::string &cid);
-    bool IsOversea();
+    virtual bool IsOversea();
 
 protected:
     void OnStart() override;
