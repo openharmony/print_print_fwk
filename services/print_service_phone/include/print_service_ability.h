@@ -164,6 +164,7 @@ public:
     void HandleWebPrinterUninstall();
     bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
     bool IsExtensionPrintJob(const std::string &cid);
+    bool IsOversea();
 
 protected:
     void OnStart() override;
@@ -422,9 +423,6 @@ public:
     bool IsDisablePrint();
     void ReportEventAndUpdateJobState(std::string option, std::string jobId);
 #endif // EDM_SERVICE_ENABLE
-
-public:
-    bool IsOversea();
 
 #ifdef REMOTE_SERVICE_ENABLE
 public:
