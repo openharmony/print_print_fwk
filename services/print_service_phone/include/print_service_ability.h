@@ -423,11 +423,15 @@ public:
     void ReportEventAndUpdateJobState(std::string option, std::string jobId);
 #endif // EDM_SERVICE_ENABLE
 
+public:
+    bool IsOversea();
+
 #ifdef REMOTE_SERVICE_ENABLE
 public:
     int32_t AddRemotePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool RemoveRemotePrinterInfo(const std::string &uri);
 private:
+    bool StartRemotePrinterDiscovery();
     bool MatchPrinterByUri(const std::string &uri, std::string &matchedPrinterId, PrinterInfo &matchedPrinter);
     bool IsRemotePrinter(const std::string &printerId);
     int32_t ConnectRemotePrinter(const std::string &printerId);

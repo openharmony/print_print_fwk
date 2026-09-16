@@ -93,6 +93,7 @@ static constexpr uint32_t ISO_A4_WIDTH = 8268;
 static constexpr uint32_t ISO_A4_HEIGHT = 11692;
 static const std::string IS_ENTERPRISE_ENABLE = "true";
 static const std::string ENTERPRISE_SPACE_PARAM = "persist.space_mgr_service.enterprise_space_enable";
+static const std::string OVERSEA_PARAM = "const.cust.is_oversea";
 static const std::string PRINT_QUERY_INFO_EVENT_TYPE = "printerInfoQuery";
 static const std::string CUPSD_CONTROL_PARAM = "print.cupsd.ready";
 static const std::string CUPSD_ENTERPRISE_CONTROL_PARAM = "print.cupsd_enterprise.ready";

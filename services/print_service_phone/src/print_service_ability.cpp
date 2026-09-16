@@ -176,6 +176,8 @@ static const std::string IS_ENTERPRISE_ENABLE = "true";
 static const std::string ENTERPRISE_SPACE_PARAM = "persist.space_mgr_service.enterprise_space_enable";
 #endif  // ENTERPRISE_ENABLE
 
+static const std::string OVERSEA_PARAM = "const.cust.is_oversea";
+
 static const std::vector<std::string> PRINT_TASK_EVENT_LIST = {EVENT_BLOCK, EVENT_SUCCESS, EVENT_FAIL, EVENT_CANCEL};
 
 static const std::vector<std::string> PREINSTALLED_DRIVER_PRINTER = {};
@@ -772,11 +774,7 @@ int32_t PrintServiceAbility::StartDiscoverPrinter(const std::vector<std::string>
     PRINT_HILOGI("Add discovery caller, pid: %{public}d, bundleName: %{public}s", callerPid, bundleName.c_str());
 
 #ifdef REMOTE_SERVICE_ENABLE
-    AppExecFwk::BundleInfo bundleInfo;
-    if (GetBundleInfo(bundleInfo) && bundleInfo.signatureInfo.appIdentifier == REMOTE_EXT_BUNDLE_ID) {
-        PRINT_HILOGI("Remote bundle detected, start printer discovery");
-        RemotePrinterManager::GetInstance().StartPrinterDiscovery();
-        PRINT_HILOGI("Remote discovery started, skip vendor and extension discovery");
+    if (StartRemotePrinterDiscovery()) {
         return E_PRINT_NONE;
     }
 #endif
@@ -5199,6 +5197,11 @@ bool PrintServiceAbility::IsEnterpriseEnable()
     return enterpriseEnable == IS_ENTERPRISE_ENABLE;
 }
 
+bool PrintServiceAbility::IsOversea()
+{
+    return OHOS::system::GetBoolParameter(OVERSEA_PARAM, false);
+}
+
 bool PrintServiceAbility::RefreshPrinterStatusOnSwitchUser()
 {
     if (!IsEnterpriseEnable()) {
@@ -6042,6 +6045,22 @@ void PrintServiceAbility::HandleWebPrinterUninstall()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
+bool PrintServiceAbility::StartRemotePrinterDiscovery()
+{
+    AppExecFwk::BundleInfo bundleInfo;
+    if (!GetBundleInfo(bundleInfo) || bundleInfo.signatureInfo.appIdentifier != REMOTE_EXT_BUNDLE_ID) {
+        return false;
+    }
+    if (IsOversea()) {
+        PRINT_HILOGI("Oversea mode, skip remote printer discovery, fallback to local discovery");
+        return false;
+    }
+    PRINT_HILOGI("Remote bundle detected, start printer discovery");
+    RemotePrinterManager::GetInstance().StartPrinterDiscovery();
+    PRINT_HILOGI("Remote discovery started, skip vendor and extension discovery");
+    return true;
+}
+
 bool PrintServiceAbility::IsRemotePrinter(const std::string &printerId)
 {
     std::string extensionId = PrintUtils::GetExtensionId(printerId);
