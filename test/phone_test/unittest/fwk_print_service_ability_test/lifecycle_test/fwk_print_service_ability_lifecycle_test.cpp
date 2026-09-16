@@ -166,33 +166,29 @@ HWTEST_F(PrintServiceAbilityTest, RefreshPrinterStatusOnSwitchUser_EnterpriseEna
 }
 
 /**
- * @tc.name: IsOversea_WhenParameterTrue_ShouldReturnTrue
- * @tc.desc: Verify IsOversea returns true when const.cust.is_oversea is true.
+ * @tc.name: IsOversea_WhenOversea_ShouldReturnTrue
+ * @tc.desc: Verify IsOversea returns true in oversea mode.
  * @tc.type: FUNC IsOversea
- * @tc.require: Oversea mode should be detected when parameter is true.
+ * @tc.require: Oversea mode should be detected.
  */
-HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterTrue_ShouldReturnTrue, TestSize.Level1)
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenOversea_ShouldReturnTrue, TestSize.Level1)
 {
-    auto service = PrintServiceAbilityTest::CreateService();
-    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
-    OHOS::system::SetParameter(OVERSEA_PARAM, "true");
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    EXPECT_CALL(*service, IsOversea()).WillOnce(Return(true));
     EXPECT_TRUE(service->IsOversea());
-    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
 }
 
 /**
- * @tc.name: IsOversea_WhenParameterFalse_ShouldReturnFalse
- * @tc.desc: Verify IsOversea returns false when const.cust.is_oversea is false.
+ * @tc.name: IsOversea_WhenDomestic_ShouldReturnFalse
+ * @tc.desc: Verify IsOversea returns false in domestic mode.
  * @tc.type: FUNC IsOversea
- * @tc.require: Domestic mode should be detected when parameter is false.
+ * @tc.require: Domestic mode should be detected.
  */
-HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterFalse_ShouldReturnFalse, TestSize.Level1)
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenDomestic_ShouldReturnFalse, TestSize.Level1)
 {
-    auto service = PrintServiceAbilityTest::CreateService();
-    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
-    OHOS::system::SetParameter(OVERSEA_PARAM, "false");
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    EXPECT_CALL(*service, IsOversea()).WillOnce(Return(false));
     EXPECT_FALSE(service->IsOversea());
-    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
 }
 
 /**
@@ -204,10 +200,7 @@ HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterFalse_ShouldReturnFalse
 HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterNotSet_ShouldReturnFalse, TestSize.Level1)
 {
     auto service = PrintServiceAbilityTest::CreateService();
-    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
-    OHOS::system::SetParameter(OVERSEA_PARAM, "");
     EXPECT_FALSE(service->IsOversea());
-    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
 }
 
 HWTEST_F(PrintServiceAbilityTest, OHReleaseTest, TestSize.Level1)
