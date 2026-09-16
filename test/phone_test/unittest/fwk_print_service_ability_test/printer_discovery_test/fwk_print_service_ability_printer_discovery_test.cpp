@@ -859,12 +859,12 @@ HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenNotRemoteBundl
 }
 
 /**
- * @tc.name: StartRemotePrinterDiscovery_WhenOversea_ShouldReturnFalse
- * @tc.desc: Verify StartRemotePrinterDiscovery returns false (skip remote) when oversea mode is on.
+ * @tc.name: StartRemotePrinterDiscovery_WhenOversea_ShouldReturnTrue
+ * @tc.desc: Verify StartRemotePrinterDiscovery returns true (skip remote) when oversea mode is on.
  * @tc.type: FUNC StartRemotePrinterDiscovery
- * @tc.require: Oversea mode should skip remote printer discovery and fall through to local.
+ * @tc.require: Oversea mode should skip remote printer discovery entirely.
  */
-HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenOversea_ShouldReturnFalse, TestSize.Level1)
+HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenOversea_ShouldReturnTrue, TestSize.Level1)
 {
 #ifdef REMOTE_SERVICE_ENABLE
     auto service = PrintServiceAbilityTest::CreateService();
@@ -872,6 +872,21 @@ HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenOversea_Should
     OHOS::system::SetParameter(OVERSEA_PARAM, "true");
     EXPECT_FALSE(service->StartRemotePrinterDiscovery());
     OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StopRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldNotCrash
+ * @tc.desc: Verify StopRemotePrinterDiscovery does nothing when caller is not a remote bundle.
+ * @tc.type: FUNC StopRemotePrinterDiscovery
+ * @tc.require: Non-remote bundle should skip remote stop.
+ */
+HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldNotCrash, TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = PrintServiceAbilityTest::CreateService();
+    service->StopRemotePrinterDiscovery();
+    EXPECT_NE(service, nullptr);
 #endif  // REMOTE_SERVICE_ENABLE
 }
 

@@ -430,6 +430,7 @@ public:
     bool RemoveRemotePrinterInfo(const std::string &uri);
 private:
     bool StartRemotePrinterDiscovery();
+    void StopRemotePrinterDiscovery();
     bool MatchPrinterByUri(const std::string &uri, std::string &matchedPrinterId, PrinterInfo &matchedPrinter);
     bool IsRemotePrinter(const std::string &printerId);
     int32_t ConnectRemotePrinter(const std::string &printerId);

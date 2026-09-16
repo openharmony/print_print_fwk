@@ -2593,11 +2593,7 @@ void PrintServiceAbility::StopDiscoveryInternal()
     PRINT_HILOGI("StopDiscoveryInternal start.");
     vendorManager.StopDiscovery();
 #ifdef REMOTE_SERVICE_ENABLE
-    AppExecFwk::BundleInfo bundleInfo;
-    if (GetBundleInfo(bundleInfo) && bundleInfo.signatureInfo.appIdentifier == REMOTE_EXT_BUNDLE_ID) {
-        PRINT_HILOGI("Remote bundle detected, stop printer discovery");
-        RemotePrinterManager::GetInstance().StopPrinterDiscovery();
-    }
+    StopRemotePrinterDiscovery();
 #endif
     printSystemData_.ClearDiscoveredPrinterList();
     CallbackInfo cbInfo;
@@ -6059,6 +6055,20 @@ bool PrintServiceAbility::StartRemotePrinterDiscovery()
     RemotePrinterManager::GetInstance().StartPrinterDiscovery();
     PRINT_HILOGI("Remote discovery started, skip vendor and extension discovery");
     return true;
+}
+
+void PrintServiceAbility::StopRemotePrinterDiscovery()
+{
+    AppExecFwk::BundleInfo bundleInfo;
+    if (!GetBundleInfo(bundleInfo) || bundleInfo.signatureInfo.appIdentifier != REMOTE_EXT_BUNDLE_ID) {
+        return;
+    }
+    if (IsOversea()) {
+        PRINT_HILOGI("Oversea mode, skip stop remote printer discovery");
+        return;
+    }
+    PRINT_HILOGI("Remote bundle detected, stop printer discovery");
+    RemotePrinterManager::GetInstance().StopPrinterDiscovery();
 }
 
 bool PrintServiceAbility::IsRemotePrinter(const std::string &printerId)
