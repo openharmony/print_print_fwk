@@ -6052,8 +6052,8 @@ bool PrintServiceAbility::StartRemotePrinterDiscovery()
         return false;
     }
     if (IsOversea()) {
-        PRINT_HILOGI("Oversea mode, skip remote printer discovery, fallback to local discovery");
-        return false;
+        PRINT_HILOGI("Oversea mode, skip remote printer discovery");
+        return true;
     }
     PRINT_HILOGI("Remote bundle detected, start printer discovery");
     RemotePrinterManager::GetInstance().StartPrinterDiscovery();
