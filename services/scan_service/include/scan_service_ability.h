@@ -133,6 +133,9 @@ private:
         int32_t userId;
     };
     std::optional<OpenedScanner> openedScanner_;
+    // owner pid whose cache cleanup is deferred to scan-task end (after files
+    // are written). Guarded by lock_.
+    std::optional<int32_t> pendingCleanOwner_;
     std::atomic<ServiceRunningState> state_;
     std::recursive_mutex lock_;
     static std::mutex instanceLock_;
