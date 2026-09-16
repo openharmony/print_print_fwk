@@ -165,6 +165,51 @@ HWTEST_F(PrintServiceAbilityTest, RefreshPrinterStatusOnSwitchUser_EnterpriseEna
 #endif  // ENTERPRISE_ENABLE
 }
 
+/**
+ * @tc.name: IsOversea_WhenParameterTrue_ShouldReturnTrue
+ * @tc.desc: Verify IsOversea returns true when const.cust.is_oversea is true.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Oversea mode should be detected when parameter is true.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterTrue_ShouldReturnTrue, TestSize.Level1)
+{
+    auto service = PrintServiceAbilityTest::CreateService();
+    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
+    OHOS::system::SetParameter(OVERSEA_PARAM, "true");
+    EXPECT_TRUE(service->IsOversea());
+    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
+}
+
+/**
+ * @tc.name: IsOversea_WhenParameterFalse_ShouldReturnFalse
+ * @tc.desc: Verify IsOversea returns false when const.cust.is_oversea is false.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Domestic mode should be detected when parameter is false.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterFalse_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = PrintServiceAbilityTest::CreateService();
+    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
+    OHOS::system::SetParameter(OVERSEA_PARAM, "false");
+    EXPECT_FALSE(service->IsOversea());
+    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
+}
+
+/**
+ * @tc.name: IsOversea_WhenParameterNotSet_ShouldReturnFalse
+ * @tc.desc: Verify IsOversea returns false (default) when const.cust.is_oversea is not set.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Default value should be false (domestic) when parameter is unset.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterNotSet_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = PrintServiceAbilityTest::CreateService();
+    std::string parameterSaved = OHOS::system::GetParameter(OVERSEA_PARAM, "");
+    OHOS::system::SetParameter(OVERSEA_PARAM, "");
+    EXPECT_FALSE(service->IsOversea());
+    OHOS::system::SetParameter(OVERSEA_PARAM, parameterSaved);
+}
+
 HWTEST_F(PrintServiceAbilityTest, OHReleaseTest, TestSize.Level1)
 {
     PrintServiceMockPermission::MockPermission();
