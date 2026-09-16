@@ -5193,11 +5193,6 @@ bool PrintServiceAbility::IsEnterpriseEnable()
     return enterpriseEnable == IS_ENTERPRISE_ENABLE;
 }
 
-bool PrintServiceAbility::IsOversea()
-{
-    return OHOS::system::GetBoolParameter(OVERSEA_PARAM, false);
-}
-
 bool PrintServiceAbility::RefreshPrinterStatusOnSwitchUser()
 {
     if (!IsEnterpriseEnable()) {
@@ -5225,6 +5220,11 @@ bool PrintServiceAbility::RefreshPrinterStatusOnSwitchUser()
     return true;
 }
 #endif  // ENTERPRISE_ENABLE
+
+bool PrintServiceAbility::IsOversea()
+{
+    return OHOS::system::GetBoolParameter(OVERSEA_PARAM, false);
+}
 
 bool PrintServiceAbility::CheckPrintConstraint(std::string option, std::string jobId)
 {
