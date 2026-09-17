@@ -656,8 +656,8 @@ export default namespace print {
         native clean(): void;
     }
 
-    let printTaskDestroyRegister: FinalizationRegister<PrintTaskCleaner> =
-        new FinalizationRegister<PrintTaskCleaner>((cleaner: PrintTaskCleaner): void => {
+    let printTaskDestroyRegister: FinalizationRegisty<PrintTaskCleaner> =
+        new FinalizationRegisty<PrintTaskCleaner>((cleaner: PrintTaskCleaner): void => {
             cleaner.clean();
         });
 
