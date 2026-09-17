@@ -979,14 +979,14 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
     status = env->FindClass("@ohos.print.print.PrintTaskCleaner", &cleanCls);
     if (status != ANI_OK) {
         PRINT_HILOGE("Not found @ohos.print.print.PrintTaskCleaner");
-        return ANI_INVALID_ARGS;
+        return static_cast<ani_status>(status);
     }
     std::array cleanMethod = {
         ani_native_function{"clean", nullptr, reinterpret_cast<void *>(OHOS::Print::AniPrintTaskHelper::TaskClean)}};
     status = env->Class_BindNativeMethods(cleanCls, cleanMethod.data(), cleanMethod.size());
     if (status != ANI_OK) {
         PRINT_HILOGE("Cannot bind native methods to PrintTaskCleaner, status = %{public}u", status);
-        return ANI_INVALID_ARGS;
+        return static_cast<ani_status>(status);
     }
 
     PRINT_HILOGI("Finish bind native methods");
