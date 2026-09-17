@@ -650,7 +650,7 @@ export default namespace print {
 
     class PrintTaskCleaner {
         private ptr: long = 0;
-        
+
         constructor(ptr: long) {
             this.ptr = ptr;
         }
