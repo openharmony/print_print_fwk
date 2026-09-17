@@ -647,6 +647,7 @@ export default namespace print {
         offFail(callback?: Callback<void>): void;
         offCancel(callback?: Callback<void>): void;
     }
+
     class PrintTaskCleaner {
         private ptr: long = 0;
         
@@ -656,8 +657,8 @@ export default namespace print {
         native clean(): void;
     }
 
-    let printTaskDestroyRegister: FinalizationRegisty<PrintTaskCleaner> =
-        new FinalizationRegisty<PrintTaskCleaner>((cleaner: PrintTaskCleaner): void => {
+    let printTaskDestroyRegister: FinalizationRegistry<PrintTaskCleaner> =
+        new FinalizationRegistry<PrintTaskCleaner>((cleaner: PrintTaskCleaner): void => {
             cleaner.clean();
         });
 
