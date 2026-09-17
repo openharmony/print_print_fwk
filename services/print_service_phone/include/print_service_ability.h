@@ -162,7 +162,7 @@ public:
     int32_t AddPrinter(const std::string &printerName, const std::string &uri,
         const std::string &ppdName, const std::string &options);
     void HandleWebPrinterUninstall();
-    bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
+    virtual bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
     bool IsExtensionPrintJob(const std::string &cid);
     virtual bool IsOversea();
 
