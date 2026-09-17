@@ -560,13 +560,11 @@ int32_t PrintShellCommand::ResolvePrinter(PrintJobParams& params)
     if (params.printerId.empty()) {
         int32_t idRet = ResolvePrinterId(params.printerId);
         if (idRet != ERR_OK) {
-            CloseFdList(fdList);
             return ERR_INVALID_VALUE;
         }
     }
 
     if (params.printerId == VIRTUAL_PRINTER_ID) {
-        CloseFdList(fdList);
         OutputError(ERR_VIRTUAL_PRINTER_NOT_SUPPORTED,
             "Virtual printer is not supported by this command",
             "Virtual printer jobs are handled by the print application, "
@@ -577,7 +575,6 @@ int32_t PrintShellCommand::ResolvePrinter(PrintJobParams& params)
     if (params.printerUri.empty()) {
         int32_t uriRet = ResolvePrinterUri(params.printerId, params.printerUri);
         if (uriRet != ERR_OK) {
-            CloseFdList(fdList);
             return ERR_INVALID_VALUE;
         }
     }
