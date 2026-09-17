@@ -302,7 +302,7 @@ private:
     int32_t ResolvePrinterId(std::string& printerId);
     int32_t ResolvePrinterUri(const std::string& printerId, std::string& printerUri);
     int32_t CheckPrinterStatus(const std::string& printerId, const std::string& printerStatusInput);
-    int32_t ResolvePrinter(PrinterJobParams& params);
+    int32_t ResolvePrinter(PrintJobParams& params);
     void BuildOptionsJson(const PrintJobParams& params, const std::string& jobName,
                           uint32_t copyNumber, Json::Value& optionsJson);
     int32_t SetPageRangeOnJob(const std::string& pageRangeInput, PrintJob& printJob);
