@@ -83,7 +83,7 @@ bool EsclDriverManager::CreateAirscanConfigFile()
         SCAN_HILOGE("The parent directory does not exist, errno = %{public}d", errno);
         return false;
     }
-    int fd = open(CONFIG_FILE_PATH, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0550);
+    int fd = open(CONFIG_FILE_PATH, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0440);
     if (fd < 0) {
         SCAN_HILOGE("Failed to create file, errno = %{public}d", errno);
         return false;

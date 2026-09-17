@@ -60,4 +60,17 @@ AniPrintTask* AniPrintTaskHelper::UnwrappPrintTask(ani_env *env, ani_object obje
     }
     return reinterpret_cast<AniPrintTask *>(printTask);
 }
+
+void AniPrintTaskHelper::TaskClean(ani_env *env, ani_object object)
+{
+    PRINT_CHECK_NULL_RETURN_VOID_WITH_FUNC(env);
+    ani_long ptr;
+    if (ANI_OK != env->Object_GetFieldByName_Long(object, "ptr", &ptr)) {
+        PRINT_HILOGE("TaskClean Object_GetFieldByName_Long fail");
+        return;
+    }
+    auto* nativePrintTask = reinterpret_cast<AniPrintTask *>(ptr);
+    PRINT_CHECK_NULL_RETURN_VOID_WITH_FUNC(nativePrintTask);
+    delete nativePrintTask;
+}
 }  // namespace OHOS::Print

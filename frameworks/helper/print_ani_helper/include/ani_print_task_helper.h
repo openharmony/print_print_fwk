@@ -24,6 +24,7 @@ class AniPrintTaskHelper {
 public:
     static ani_object CreatePrintTask(ani_env *env, AniPrintTask* nativePrintTask);
     static AniPrintTask* UnwrappPrintTask(ani_env *env, ani_object object);
+    static void TaskClean(ani_env *env, ani_object object);
 };
 }  // namespace OHOS::Print
 #endif  // OHOS_ANI_PRINT_TASK_HELPER_H
