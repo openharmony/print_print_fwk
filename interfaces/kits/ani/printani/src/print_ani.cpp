@@ -981,7 +981,7 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
         PRINT_HILOGE("Not found @ohos.print.print.PrintTaskCleaner");
         return ANI_INVALID_ARGS;
     }
-    std:;array cleanMethod = {
+    std::array cleanMethod = {
         ani_native_function{"clean", nullptr, reinterpret_cast<void *>(OHOS::Print::AniPrintTaskHelper::TaskClean)}};
     status = env->Class_BindNativeMethods(cleanCls, cleanMethod.data(), cleanMethod.size());
     if (status != ANI_OK) {
