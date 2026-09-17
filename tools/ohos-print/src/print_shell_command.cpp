@@ -187,37 +187,6 @@ ErrCode PrintShellCommand::RunAsStartPrintJob()
         return ERR_INVALID_VALUE;
     }
 
-    if (params.printerId.empty()) {
-        int32_t idRet = ResolvePrinterId(params.printerId);
-        if (idRet != ERR_OK) {
-            CloseFdList(fdList);
-            return ERR_INVALID_VALUE;
-        }
-    }
-
-    if (params.printerId == VIRTUAL_PRINTER_ID) {
-        CloseFdList(fdList);
-        OutputError(ERR_VIRTUAL_PRINTER_NOT_SUPPORTED,
-            "Virtual printer is not supported by this command",
-            "Virtual printer jobs are handled by the print application, "
-            "please use a physical printer instead", resultReceiver_);
-        return ERR_INVALID_VALUE;
-    }
-
-    if (params.printerUri.empty()) {
-        int32_t uriRet = ResolvePrinterUri(params.printerId, params.printerUri);
-        if (uriRet != ERR_OK) {
-            CloseFdList(fdList);
-            return ERR_INVALID_VALUE;
-        }
-    }
-
-    int32_t statusRet = CheckPrinterStatus(params.printerId, params.printerStatusInput);
-    if (statusRet != ERR_OK) {
-        CloseFdList(fdList);
-        return ERR_INVALID_VALUE;
-    }
-
     int32_t submitRet = BuildAndSubmitPrintJob(params, fdList, jobName);
     CloseFdList(fdList);
     if (submitRet != ERR_OK) {
@@ -588,7 +557,31 @@ int32_t PrintShellCommand::ResolvePrinterId(std::string& printerId)
 
 int32_t PrintShellCommand::ResolvePrinter(PrintJobParams& params)
 {
-    
+    if (params.printerId.empty()) {
+        int32_t idRet = ResolvePrinterId(params.printerId);
+        if (idRet != ERR_OK) {
+            CloseFdList(fdList);
+            return ERR_INVALID_VALUE;
+        }
+    }
+
+    if (params.printerId == VIRTUAL_PRINTER_ID) {
+        CloseFdList(fdList);
+        OutputError(ERR_VIRTUAL_PRINTER_NOT_SUPPORTED,
+            "Virtual printer is not supported by this command",
+            "Virtual printer jobs are handled by the print application, "
+            "please use a physical printer instead", resultReceiver_);
+        return ERR_INVALID_VALUE;
+    }
+
+    if (params.printerUri.empty()) {
+        int32_t uriRet = ResolvePrinterUri(params.printerId, params.printerUri);
+        if (uriRet != ERR_OK) {
+            CloseFdList(fdList);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return CheckPrinterStatus(params.printerId, params.printerStatusInput);
 }
 
 int32_t PrintShellCommand::ResolvePrinterUri(const std::string& printerId, std::string& printerUri)
