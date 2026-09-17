@@ -181,6 +181,12 @@ ErrCode PrintShellCommand::RunAsStartPrintJob()
         return ERR_INVALID_VALUE;
     }
 
+    int32_t resolveRet = ResolvePrinter(params);
+    if (resolveRet != ERR_OK) {
+        CloseFdList(fdList);
+        return ERR_INVALID_VALUE;
+    }
+
     if (params.printerId.empty()) {
         int32_t idRet = ResolvePrinterId(params.printerId);
         if (idRet != ERR_OK) {
@@ -578,6 +584,11 @@ int32_t PrintShellCommand::ResolvePrinterId(std::string& printerId)
         "No default printer found",
         "Please set a default printer, or provide --printer-id explicitly", resultReceiver_);
     return ERR_INVALID_VALUE;
+}
+
+int32_t PrintShellCommand::ResolvePrinter(PrintJobParams& params)
+{
+    
 }
 
 int32_t PrintShellCommand::ResolvePrinterUri(const std::string& printerId, std::string& printerUri)
