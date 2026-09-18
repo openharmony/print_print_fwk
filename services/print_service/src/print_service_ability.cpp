@@ -1784,6 +1784,10 @@ int32_t PrintServiceAbility::StartNativePrintJob(PrintJob &printJob)
         return E_PRINT_INVALID_PRINTER;
     }
     std::string jobId = printJob.GetJobId() != "" ? printJob.GetJobId() : PrintUtils::GetPrintJobId();
+    if (printJobList_.find(jobId) != printJobList_.end() || queuedJobList_.find(jobId) != queuedJobList_.end()) {
+        PRINT_HILOGE("[Job Id: %{public}s] job already exists, reject duplicate job", jobId.c_str());
+        return E_PRINT_INVALID_PARAMETER;
+    }
     auto nativePrintJob = AddNativePrintJob(jobId, printJob);
     if (nativePrintJob == nullptr) {
         return E_PRINT_SERVER_FAILURE;
