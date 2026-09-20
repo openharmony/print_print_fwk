@@ -38,6 +38,8 @@ ohos_fuzztest("ScanCallbackProxyFuzzTest") {
     "-fno-omit-frame-pointer",
   ]
 
+  cflags_cc = [ "-DUNIT_TEST" ]
+
   deps = [
     "${print_path}/frameworks/models/scan_models:scan_models",
     "${print_path}/frameworks/innerkitsimpl/scan_impl:scan_client",

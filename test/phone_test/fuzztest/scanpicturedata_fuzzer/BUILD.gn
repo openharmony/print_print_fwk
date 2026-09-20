@@ -36,6 +36,8 @@ ohos_fuzztest("ScanPictureDataFuzzTest") {
     "-fno-omit-frame-pointer",
   ]
 
+  cflags_cc = [ "-DUNIT_TEST" ]
+
   deps = [
     "${print_path}/services/scan_service:scan_service_test",
     "${print_path}/frameworks/models/scan_models:scan_models",
