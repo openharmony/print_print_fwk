@@ -40,7 +40,7 @@ ohos_fuzztest("PpdInfoFuzzTest") {
     "-fno-omit-frame-pointer",
   ]
 
-  cflags_cc = []
+  cflags_cc = [ "-DUNIT_TEST" ]
 
   deps = [
     "${print_path}/frameworks/innerkitsimpl/print_impl:print_client",

@@ -40,7 +40,7 @@ ohos_fuzztest("PrintServicePrintJobStateFunctionFuzzTest") {
     "-fno-omit-frame-pointer",
   ]
 
-  cflags_cc = []
+  cflags_cc = [ "-DUNIT_TEST" ]
 
   deps = [
     "${print_path}/etc/init:printservice.rc",
