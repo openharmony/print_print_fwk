@@ -347,6 +347,7 @@ private:
     void MonitorModeChange();
     bool IsModeChangeEnd(std::string &lastChangeModeValue);
     bool UpdateBsuniPrinterAdvanceOptions(std::shared_ptr<PrinterInfo> printerInfo);
+    bool NeedUpdateAdvanceOptions(const std::string &printerId, const PrinterInfo &info);
     void SupplementBsuniPrinterAdvanceOptionsIfNeeded(const std::string &printerId, PrinterInfo &info);
     void RefreshAddedPrinterAdvanceOptions();
     void ParseSingleAdvanceOptJson(
