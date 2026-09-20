@@ -6471,28 +6471,40 @@ int32_t PrintServiceAbility::ConnectPrinterByIdAndPpd(const std::string &printer
     return E_PRINT_NONE;
 }
 
-void PrintServiceAbility::SupplementBsuniPrinterAdvanceOptionsIfNeeded(
-    const std::string &printerId, PrinterInfo &info)
+bool PrintServiceAbility::NeedUpdateAdvanceOptions(const std::string &printerId, const PrinterInfo &info)
 {
-    if (!info.HasSelectedDriver()) {
-        PRINT_HILOGW("no selected driver, skip supplement advance options");
-        return;
-    }
-    PpdInfo ppdInfo;
-    info.GetSelectedDriver(ppdInfo);
-    if (ppdInfo.GetPpdName() != BSUNI_PPD_NAME) {
-        PRINT_HILOGI("ppdName is not bsuni, skip supplement advance options");
-        return;
-    }
     if (!info.HasCapability()) {
-        PRINT_HILOGW("no capability, skip supplement advance options");
-        return;
+        PRINT_HILOGW("no capability, no need to update advance options");
+        return false;
     }
     PrinterCapability capability;
     info.GetCapability(capability);
     Json::Value advanceOptionsJson;
     if (capability.GetAdvanceOptionsJson(advanceOptionsJson)) {
-        PRINT_HILOGI("advanceOptions already exists, skip supplement advance options");
+        PRINT_HILOGI("advanceOptions already exists, no need to update");
+        return false;
+    }
+    if (info.HasSelectedDriver()) {
+        PpdInfo ppdInfo;
+        info.GetSelectedDriver(ppdInfo);
+        if (ppdInfo.GetPpdName() == BSUNI_PPD_NAME) {
+            PRINT_HILOGI("ppdName is bsuni, need to update advance options");
+            return true;
+        }
+    }
+    if (PrintUtil::startsWith(printerId, VENDOR_MANAGER_PREFIX + VENDOR_WLAN_GROUP + GLOBAL_ID_DELIMITER) &&
+        info.GetPpdHashCode().empty()) {
+        PRINT_HILOGI("wlan group printer with empty ppdHashCode, need to update advance options");
+        return true;
+    }
+    return false;
+}
+
+void PrintServiceAbility::SupplementBsuniPrinterAdvanceOptionsIfNeeded(
+    const std::string &printerId, PrinterInfo &info)
+{
+    if (!NeedUpdateAdvanceOptions(printerId, info)) {
+        PRINT_HILOGI("no need to update advance options, skip supplement");
         return;
     }
     auto printerInfoPtr = std::make_shared<PrinterInfo>(info);

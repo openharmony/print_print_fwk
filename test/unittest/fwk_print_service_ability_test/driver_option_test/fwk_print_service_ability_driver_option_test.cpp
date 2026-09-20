@@ -213,7 +213,7 @@ HWTEST_F(PrintServiceAbilityTest,
     PpdInfo ppdInfo;
     ppdInfo.SetPpdInfo("Generic", "System Default Driver", BSUNI_PPD_NAME);
     printerInfo.SetSelectedDriver(ppdInfo);
-    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("printer-no-capability", printerInfo);
+    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("fwk.driver.wlan.group:192.168.1.100", printerInfo);
     EXPECT_TRUE(printerInfo.HasSelectedDriver());
     EXPECT_FALSE(printerInfo.HasCapability());
 }
@@ -233,7 +233,7 @@ HWTEST_F(PrintServiceAbilityTest,
     optionJson["cupsOptions"] = cupsOptionsJson;
     printerCaps.SetOption(PrintJsonUtil::WriteStringUTF8(optionJson));
     printerInfo.SetCapability(printerCaps);
-    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("printer-adv-exist", printerInfo);
+    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("fwk.driver.wlan.group:192.168.1.101", printerInfo);
     PrinterCapability resultCap;
     printerInfo.GetCapability(resultCap);
     Json::Value advanceOptionsJson;
@@ -245,9 +245,6 @@ HWTEST_F(PrintServiceAbilityTest,
 {
     auto service = PrintServiceAbilityTest::CreateService();
     PrinterInfo printerInfo;
-    PpdInfo ppdInfo;
-    ppdInfo.SetPpdInfo("Generic", "System Default Driver", BSUNI_PPD_NAME);
-    printerInfo.SetSelectedDriver(ppdInfo);
     PrinterCapability printerCaps;
     Json::Value optionJson;
     Json::Value cupsOptionsJson;
@@ -255,7 +252,7 @@ HWTEST_F(PrintServiceAbilityTest,
     optionJson["cupsOptions"] = cupsOptionsJson;
     printerCaps.SetOption(PrintJsonUtil::WriteStringUTF8(optionJson));
     printerInfo.SetCapability(printerCaps);
-    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("printer-update-fail", printerInfo);
+    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("fwk.driver.wlan.group:192.168.1.102", printerInfo);
     PrinterCapability resultCap;
     printerInfo.GetCapability(resultCap);
     Json::Value advanceOptionsJson;
@@ -268,9 +265,6 @@ HWTEST_F(PrintServiceAbilityTest,
     auto service = PrintServiceAbilityTest::CreateService();
     PrinterInfo printerInfo;
     printerInfo.SetPrinterName("BsuniTestPrinter");
-    PpdInfo ppdInfo;
-    ppdInfo.SetPpdInfo("Generic", "System Default Driver", BSUNI_PPD_NAME);
-    printerInfo.SetSelectedDriver(ppdInfo);
     PrinterCapability printerCaps;
     Json::Value optionJson;
     Json::Value cupsOptionsJson;
@@ -281,7 +275,7 @@ HWTEST_F(PrintServiceAbilityTest,
     optionJson["cupsOptions"] = cupsOptionsJson;
     printerCaps.SetOption(PrintJsonUtil::WriteStringUTF8(optionJson));
     printerInfo.SetCapability(printerCaps);
-    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("printer-update-success", printerInfo);
+    service->SupplementBsuniPrinterAdvanceOptionsIfNeeded("fwk.driver.wlan.group:192.168.1.103", printerInfo);
     PrinterCapability resultCap;
     printerInfo.GetCapability(resultCap);
     Json::Value advanceOptionsJson;
