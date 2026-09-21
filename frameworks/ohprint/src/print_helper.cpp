@@ -439,6 +439,33 @@ void ParseCupsOptions(const Json::Value &cupsOpt, Print_PrinterInfo &nativePrint
     nativePrinterInfo.capability.advancedCapability = CopyString((PrintJsonUtil::WriteString(advancedCapJson)).c_str());
 }
 
+void MergeCupsAdvanceDefault(const PrinterCapability &cap, Json::Value &otherDefaults)
+{
+    if (!cap.HasOption()) {
+        return;
+    }
+    Json::Value capJson;
+    if (!PrintJsonUtil::Parse(cap.GetOption(), capJson) ||
+        !PrintJsonUtil::IsMember(capJson, "cupsOptions") || !capJson["cupsOptions"].isObject()) {
+        return;
+    }
+    const Json::Value &cupsOpt = capJson["cupsOptions"];
+    if (!PrintJsonUtil::IsMember(cupsOpt, "advanceDefault") || !cupsOpt["advanceDefault"].isString()) {
+        return;
+    }
+    Json::Value advanceDefaultJson;
+    if (PrintJsonUtil::Parse(cupsOpt["advanceDefault"].asString(), advanceDefaultJson) &&
+        advanceDefaultJson.isObject() && !advanceDefaultJson.empty()) {
+        for (const auto &key : advanceDefaultJson.getMemberNames()) {
+            // 用户已在 ParsePrinterPreference 中设置了该高级选项的首选项值，
+            // CUPS 默认值不覆盖；仅填补用户未设置过的 key 作为兜底
+            if (!PrintJsonUtil::IsMember(otherDefaults, key)) {
+                otherDefaults[key] = advanceDefaultJson[key];
+            }
+        }
+    }
+}
+
 void ParseAdvanceOptions(const OHOS::Print::PrinterCapability &cap, Print_PrinterInfo &nativePrinterInfo)
 {
     if (!cap.HasOption()) {
@@ -461,23 +488,6 @@ void ParseAdvanceOptions(const OHOS::Print::PrinterCapability &cap, Print_Printe
         advancedCapJson["advanceOptions"] = cupsOpt["advanceOptions"].asString();
         SAFE_DELETE_ARRAY(nativePrinterInfo.capability.advancedCapability);
         nativePrinterInfo.capability.advancedCapability = CopyString(PrintJsonUtil::WriteString(advancedCapJson));
-    }
-    if (PrintJsonUtil::IsMember(cupsOpt, "advanceDefault") && cupsOpt["advanceDefault"].isString()) {
-        Json::Value otherDefaults;
-        const char *existingOtherDefaults = nativePrinterInfo.defaultValue.otherDefaultValues;
-        if (existingOtherDefaults != nullptr &&
-            !PrintJsonUtil::Parse(std::string(existingOtherDefaults), otherDefaults)) {
-            PRINT_HILOGW("Parse otherDefaultValues fail");
-        }
-        Json::Value advanceDefaultJson;
-        if (PrintJsonUtil::Parse(cupsOpt["advanceDefault"].asString(), advanceDefaultJson) &&
-            advanceDefaultJson.isObject() && !advanceDefaultJson.empty()) {
-            for (const auto &key : advanceDefaultJson.getMemberNames()) {
-                otherDefaults[key] = advanceDefaultJson[key];
-            }
-            SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.otherDefaultValues);
-            nativePrinterInfo.defaultValue.otherDefaultValues = CopyString(PrintJsonUtil::WriteString(otherDefaults));
-        }
     }
 }
 
@@ -506,47 +516,60 @@ int32_t ParseInfoOption(const std::string &infoOption, Print_PrinterInfo &native
     return E_PRINT_NONE;
 }
 
-void ParsePrinterPreference(const PrinterInfo &info, Print_PrinterInfo &nativePrinterInfo)
+void MergePrefAdvanceOptions(const PrinterPreferences &preferences, Json::Value &otherDefaults)
 {
-    if (!info.HasPreferences()) {
-        PRINT_HILOGW("The printerInfo does not have preferences");
-        return;
+    Json::Value prefOptJson;
+    if (preferences.GetOptionJson(prefOptJson)) {
+        for (const auto &key : prefOptJson.getMemberNames()) {
+            otherDefaults[key] = prefOptJson[key];
+        }
     }
-    PrinterPreferences preferences;
-    info.GetPreferences(preferences);
+}
 
-    if (preferences.HasDefaultDuplexMode()) {
-        ConvertDuplexMode(preferences.GetDefaultDuplexMode(), nativePrinterInfo.defaultValue.defaultDuplexMode);
-    }
-    if (preferences.HasDefaultOrientation()) {
-        ConvertOrientationMode(preferences.GetDefaultOrientation(), nativePrinterInfo.defaultValue.defaultOrientation);
-    }
-    if (!preferences.GetDefaultPageSizeId().empty()) {
-        SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.defaultPageSizeId);
-        nativePrinterInfo.defaultValue.defaultPageSizeId = CopyString(preferences.GetDefaultPageSizeId());
-    }
-    if (preferences.HasDefaultPrintQuality()) {
-        ConvertQuality(preferences.GetDefaultPrintQuality(), nativePrinterInfo.defaultValue.defaultPrintQuality);
-    }
-    if (!preferences.GetDefaultMediaType().empty()) {
-        SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.defaultMediaType);
-        nativePrinterInfo.defaultValue.defaultMediaType = CopyString(preferences.GetDefaultMediaType());
-    }
-    if (preferences.HasDefaultColorMode()) {
-        ConvertColorMode(preferences.GetDefaultColorMode(), nativePrinterInfo.defaultValue.defaultColorMode);
-    }
+void ParsePrinterPreference(const PrinterInfo &info, Print_PrinterInfo &nativePrinterInfo,
+    const PrinterCapability &cap)
+{
     Json::Value otherDefaults;
     const char *existingOtherDefaults = nativePrinterInfo.defaultValue.otherDefaultValues;
     if (existingOtherDefaults != nullptr &&
         !PrintJsonUtil::Parse(std::string(existingOtherDefaults), otherDefaults)) {
         PRINT_HILOGW("Parse otherDefaultValues fail");
     }
-    if (preferences.HasDefaultCollate()) {
-        otherDefaults["defaultCollate"] = preferences.GetDefaultCollate();
+    if (!info.HasPreferences()) {
+        PRINT_HILOGW("The printerInfo does not have preferences");
+    } else {
+        PrinterPreferences preferences;
+        info.GetPreferences(preferences);
+        if (preferences.HasDefaultDuplexMode()) {
+            ConvertDuplexMode(preferences.GetDefaultDuplexMode(), nativePrinterInfo.defaultValue.defaultDuplexMode);
+        }
+        if (preferences.HasDefaultOrientation()) {
+            ConvertOrientationMode(preferences.GetDefaultOrientation(),
+                nativePrinterInfo.defaultValue.defaultOrientation);
+        }
+        if (!preferences.GetDefaultPageSizeId().empty()) {
+            SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.defaultPageSizeId);
+            nativePrinterInfo.defaultValue.defaultPageSizeId = CopyString(preferences.GetDefaultPageSizeId());
+        }
+        if (preferences.HasDefaultPrintQuality()) {
+            ConvertQuality(preferences.GetDefaultPrintQuality(), nativePrinterInfo.defaultValue.defaultPrintQuality);
+        }
+        if (!preferences.GetDefaultMediaType().empty()) {
+            SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.defaultMediaType);
+            nativePrinterInfo.defaultValue.defaultMediaType = CopyString(preferences.GetDefaultMediaType());
+        }
+        if (preferences.HasDefaultColorMode()) {
+            ConvertColorMode(preferences.GetDefaultColorMode(), nativePrinterInfo.defaultValue.defaultColorMode);
+        }
+        if (preferences.HasDefaultCollate()) {
+            otherDefaults["defaultCollate"] = preferences.GetDefaultCollate();
+        }
+        if (preferences.HasDefaultReverse()) {
+            otherDefaults["defaultReverse"] = preferences.GetDefaultReverse();
+        }
+        MergePrefAdvanceOptions(preferences, otherDefaults);
     }
-    if (preferences.HasDefaultReverse()) {
-        otherDefaults["defaultReverse"] = preferences.GetDefaultReverse();
-    }
+    MergeCupsAdvanceDefault(cap, otherDefaults);
     if (!otherDefaults.isNull() && !otherDefaults.empty()) {
         SAFE_DELETE_ARRAY(nativePrinterInfo.defaultValue.otherDefaultValues);
         nativePrinterInfo.defaultValue.otherDefaultValues = CopyString(PrintJsonUtil::WriteString(otherDefaults));
@@ -628,7 +651,7 @@ Print_PrinterInfo *ConvertToNativePrinterInfo(const PrinterInfo &info)
         }
     }
 
-    ParsePrinterPreference(info, *nativePrinterInfo);
+    ParsePrinterPreference(info, *nativePrinterInfo, cap);
     if (info.HasOption()) {
         std::string infoOpt = info.GetOption();
         PRINT_HILOGW("infoOpt json object: %{public}s", PrintUtils::AnonymizeJobOption(infoOpt).c_str());
