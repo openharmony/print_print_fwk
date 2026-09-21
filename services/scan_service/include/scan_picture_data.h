@@ -18,6 +18,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <mutex>
 #include <chrono>
 #include <queue>
@@ -31,11 +32,12 @@ public:
     void SetScanTaskCode(int32_t taskCode);
     void SetNowScanProgressFinished(bool isFinal);
     void SetLastScanProgressFinished();
-    bool RegisterCacheFiles(const std::string& baseName);
+    bool RegisterCacheFiles(const std::string& baseName, int32_t callerPid);
     int32_t GetPictureProgressInQueue(ScanProgress& scanProgress);
     void CleanAllCache();
     void CleanScanQueue();
     void CleanDiskCache();
+    void CleanByOwner(int32_t ownerPid);
     void PushScanPictureProgress();
     void RegisterExportedResult(const std::string& baseName, int32_t fd, int32_t format);
 
@@ -44,10 +46,12 @@ private:
     int32_t GetRandomNumber(const int32_t &lowerBoundary, const int32_t &upperBoundary);
     int32_t GetElapsedSeconds(const SteadyTimePoint &preTime);
     int32_t HandleCompletedScanPicture(ScanProgress& scanProgress, ScanProgress& prog);
+    void CleanCacheByPath(const std::string& path);
     mutable std::mutex mutex_;
     std::queue<int32_t> scanQueue_;
     std::map<std::string, int32_t> scanCacheFdMap_;
     std::map<int32_t, ScanProgress> scanTaskMap_;
+    std::map<int32_t, std::set<std::string>> ownerBaseNames_;
     int32_t picId_ = 0;
 };
 

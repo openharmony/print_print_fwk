@@ -17,6 +17,7 @@
 #define SCAN_CONSTANT_H
 
 #include <string>
+#include <vector>
 
 namespace OHOS::Scan {
 
@@ -275,6 +276,10 @@ constexpr size_t JPG_EXTENSION_LENGTH = 4;
 constexpr const char* JPG_EXTENSION = ".jpg";
 constexpr const char* TIFF_EXTENSION = ".tiff";
 constexpr int32_t TIFF_RESOLUTION_UNIT_INCH = 2;
+
+inline const std::vector<std::string> SCAN_PICTURE_SUFFIXES = {
+    JPG_EXTENSION, RAW_SUFFIX, META_SUFFIX, PNG_SUFFIX, TIFF_EXTENSION
+};
 
 constexpr const char* SCAN_MODE_LINEART = "Lineart";
 constexpr const char* SCAN_MODE_GRAY = "Gray";

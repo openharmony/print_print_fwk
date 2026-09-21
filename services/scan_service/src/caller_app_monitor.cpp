@@ -108,6 +108,15 @@ void CallerAppMonitor::MonitorCallerAppIsRunnig(std::function<void()> unloadTask
             }
         }
 
+        // Notify per-app cleanup for each dead pid (outside lock to avoid deadlock,
+        // mirroring unloadTask's lock-free call pattern). Restores the per-app
+        // death-cleanup that d29aeca5 inadvertently dropped during the refactor.
+        for (auto pid : deadPids) {
+            if (cleanupCallback_) {
+                cleanupCallback_(pid);
+            }
+        }
+
         // Call unloadTask outside lock to avoid deadlock
         if (shouldUnload) {
             SCAN_HILOGI("No apps use, start uninstalling scan_service");

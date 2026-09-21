@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <random>
+#include <vector>
 #include "directory_ex.h"
 #include "os_account_manager.h"
 #include "scan_picture_data.h"
@@ -64,6 +65,7 @@ void ScanPictureData::CleanAllCache()
     std::queue<int32_t> empty;
     scanQueue_.swap(empty);
     scanTaskMap_.clear();
+    ownerBaseNames_.clear();
 }
 
 int32_t ScanPictureData::HandleCompletedScanPicture(ScanProgress& scanProgress, ScanProgress& prog)
@@ -149,7 +151,7 @@ void ScanPictureData::PushScanPictureProgress()
     scanQueue_.push(picId_);
 }
 
-bool ScanPictureData::RegisterCacheFiles(const std::string& baseName)
+bool ScanPictureData::RegisterCacheFiles(const std::string& baseName, int32_t callerPid)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = scanTaskMap_.find(picId_);
@@ -157,15 +159,18 @@ bool ScanPictureData::RegisterCacheFiles(const std::string& baseName)
         SCAN_HILOGE("cannot find picId_ %{private}d", picId_);
         return false;
     }
-    
+
     // ScanProgress keeps full path
     it->second.SetImageRealPath(baseName + JPG_EXTENSION);
-    
+
     // Register cache files with full path as key
     scanCacheFdMap_[baseName + JPG_EXTENSION] = INVALID_FD;
     scanCacheFdMap_[baseName + RAW_SUFFIX] = INVALID_FD;
     scanCacheFdMap_[baseName + META_SUFFIX] = INVALID_FD;
-    
+
+    // Record owner for per-app cleanup
+    ownerBaseNames_[callerPid].insert(baseName);
+
     return true;
 }
 
@@ -231,6 +236,50 @@ void ScanPictureData::RegisterExportedResult(const std::string& baseName, int32_
     std::string fullPath = baseName + suffix;
     scanCacheFdMap_[fullPath] = fd;
     SCAN_HILOGI("Registered exported fd: %{public}d, path=%{private}s", fd, fullPath.c_str());
+}
+
+void ScanPictureData::CleanCacheByPath(const std::string& path)
+{
+    if (auto fdIt = scanCacheFdMap_.find(path); fdIt != scanCacheFdMap_.end()) {
+        if (fdIt->second != INVALID_FD) {
+            fdsan_close_with_tag(fdIt->second, SCAN_LOG_DOMAIN);
+        }
+        scanCacheFdMap_.erase(fdIt);
+    }
+    if (ScanServiceUtils::IsPathValid(path)) {
+        unlink(path.c_str());
+    }
+}
+
+void ScanPictureData::CleanByOwner(int32_t ownerPid)
+{
+    if (ownerPid <= 0) {
+        SCAN_HILOGW("invalid ownerPid %{public}d", ownerPid);
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto ownerIt = ownerBaseNames_.find(ownerPid);
+    if (ownerIt == ownerBaseNames_.end()) {
+        return;
+    }
+
+    for (const auto &bn : ownerIt->second) {
+        // Close fds and unlink files for all known suffixes
+        for (const auto &suffix : SCAN_PICTURE_SUFFIXES) {
+            CleanCacheByPath(bn + suffix);
+        }
+        // Remove scan tasks whose imageRealPath belongs to this baseName
+        for (auto taskIt = scanTaskMap_.begin(); taskIt != scanTaskMap_.end();) {
+            if (taskIt->second.GetImageRealPath() == bn + JPG_EXTENSION) {
+                taskIt = scanTaskMap_.erase(taskIt);
+            } else {
+                ++taskIt;
+            }
+        }
+        SCAN_HILOGI("CleanByOwner cleaned baseName=%{private}s, ownerPid=%{public}d", bn.c_str(), ownerPid);
+    }
+    ownerBaseNames_.erase(ownerIt);
 }
 
 void ScanPictureData::CleanDiskCache()

@@ -244,6 +244,21 @@ int32_t ScanServiceAbility::ExitScan()
         return E_SCAN_NO_PERMISSION;
     }
     ManualStart();
+    std::lock_guard<std::recursive_mutex> autoLock(lock_);
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    // Defer cleanup to scan-task end if this caller's scan is still running.
+    if (openedScanner_.has_value() && openedScanner_->callerPid == callerPid) {
+        if (scannerState_.load() != SCANNER_READY) {
+            pendingCleanOwner_ = callerPid;
+        }
+        if (int32_t ret = CloseScanner(openedScanner_->scannerId); ret != E_SCAN_NONE) {
+            SCAN_HILOGW("ExitScan CloseScanner failed: %{public}d, continue cleanup", ret);
+        }
+    }
+    // Clean now unless deferred (also no-ops a wind-down-window re-entry).
+    if (pendingCleanOwner_ != callerPid) {
+        scanPictureData_.CleanByOwner(callerPid);
+    }
     return E_SCAN_NONE;
 }
 
@@ -588,9 +603,12 @@ int32_t ScanServiceAbility::CloseScanner(const std::string scannerId)
     if (int32_t ownerRet = CheckScannerOwner(scannerId); ownerRet != E_SCAN_NONE) {
         return ownerRet;
     }
-    scanPictureData_.CleanAllCache();
+    // Clear the in-progress queue only; keep delivered results for re-export.
+    scanPictureData_.CleanScanQueue();
     if (scannerState_.load() == SCANNER_SCANING) {
         SaneManagerClient::GetInstance().SaneCancel(scannerId);
+        // CANCELING: reject RestartScan (batch) and keep StartScan BUSY until task end.
+        scannerState_.store(SCANNER_CANCELING);
     }
     SaneStatus status = SaneManagerClient::GetInstance().SaneClose(scannerId);
     if (status != SANE_STATUS_GOOD) {
@@ -1264,8 +1282,9 @@ int32_t ScanServiceAbility::StartScan(const std::string scannerId, const bool &b
     scannerState_.store(SCANNER_SCANING);
     scanPictureData_.PushScanPictureProgress();
     int32_t userId = GetCurrentUserId();
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
     auto exe = [=] () {
-        ScanTask task(scannerId, userId, batchMode);
+        ScanTask task(scannerId, userId, batchMode, callerPid);
         task.SetBinarize(needBinarize);
         StartScanTask(task);
     };
@@ -1301,6 +1320,15 @@ void ScanServiceAbility::StartScanTask(ScanTask &scanTask)
         scanPictureData_.CleanScanQueue();
     }
     scannerState_.store(SCANNER_READY);
+    // Consume a deferred cleanup (caller exited/crashed mid-scan). Release the
+    // handle only if still this caller's — don't evict a new app that opened meanwhile.
+    if (pendingCleanOwner_ == scanTask.GetCallerPid()) {
+        if (openedScanner_.has_value() && openedScanner_->callerPid == scanTask.GetCallerPid()) {
+            openedScanner_.reset();
+        }
+        scanPictureData_.CleanByOwner(scanTask.GetCallerPid());
+        pendingCleanOwner_.reset();
+    }
     SCAN_HILOGI("ScanServiceAbility StartScanTask end");
 }
 
@@ -1313,10 +1341,10 @@ bool ScanServiceAbility::CreateAndOpenScanFile(ScanTask &scanTask)
     }
     
     std::string baseName = ScanServiceUtils::ExtractBaseName(filePath);
-    
+
     {
         std::lock_guard<std::recursive_mutex> autoLock(lock_);
-        scanPictureData_.RegisterCacheFiles(baseName);
+        scanPictureData_.RegisterCacheFiles(baseName, scanTask.GetCallerPid());
     }
     return true;
 }
@@ -1515,10 +1543,17 @@ void ScanServiceAbility::CleanupDeadCaller(int32_t deadPid)
                     openedScanner_->scannerId.c_str(), deadPid);
         SaneManagerClient::GetInstance().SaneCancel(openedScanner_->scannerId);
         SaneManagerClient::GetInstance().SaneClose(openedScanner_->scannerId);
-        openedScanner_.reset();
-    }
-    if (scannerState_.load() == SCANNER_SCANING && !openedScanner_.has_value()) {
-        scannerState_.store(SCANNER_READY);
+        // Clear the queue so a stale front won't block the next owner.
+        scanPictureData_.CleanScanQueue();
+        if (scannerState_.load() != SCANNER_READY) {
+            // Scan winding down: defer cleanup + release to task end (after writes).
+            // Keep openedScanner_ held; stay CANCELING so task end clears any
+            // picId RestartScan re-pushes.
+            pendingCleanOwner_ = deadPid;
+            scannerState_.store(SCANNER_CANCELING);
+        } else {
+            openedScanner_.reset();
+        }
     }
     {
         std::lock_guard<std::recursive_mutex> lock(apiMutex_);
@@ -1537,6 +1572,10 @@ void ScanServiceAbility::CleanupDeadCaller(int32_t deadPid)
                 ++it;
             }
         }
+    }
+    // Clean now unless deferred to task end.
+    if (pendingCleanOwner_ != deadPid) {
+        scanPictureData_.CleanByOwner(deadPid);
     }
 }
 
