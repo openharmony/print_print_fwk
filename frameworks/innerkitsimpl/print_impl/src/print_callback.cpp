@@ -98,18 +98,14 @@ static napi_value WriteResultCallback(napi_env env, napi_callback_info info)
     void *data = nullptr;
 
     PRINT_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
-    CallbackParam *cbParam = static_cast<CallbackParam*> (data);
-    if (cbParam == nullptr) {
-        PRINT_HILOGE("cbParam is nullptr.");
-        return nullptr;
-    }
+    uint32_t fd = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(data));
 
     std::string jobId = NapiPrintUtils::GetStringFromValueUtf8(env, args[0]);
     uint32_t replyState = NapiPrintUtils::GetUint32FromValue(env, args[1]);
 
     PrintManagerClient::GetInstance().AdapterGetFileCallBack(
         jobId, PRINT_JOB_CREATE_FILE_COMPLETED, replyState);
-    CLOSE_FD_IF_VALID(cbParam->fd);
+    CLOSE_FD_IF_VALID(fd);
     PRINT_HILOGI("from js return jobId:%{public}s, replyState:%{public}d", jobId.c_str(), replyState);
     return nullptr;
 }
@@ -138,7 +134,8 @@ static void PrintAdapterWorkCb(CallbackParam *cbParam)
         callbackValues[NapiPrintUtils::ARGC_THREE] =
             NapiPrintUtils::CreateUint32(cbParam->env, cbParam->fd);
         callbackValues[NapiPrintUtils::ARGC_FOUR] =
-            NapiPrintUtils::CreateFunction(cbParam->env, "writeResultCallback", WriteResultCallback, cbParam);
+            NapiPrintUtils::CreateFunction(cbParam->env, "writeResultCallback", WriteResultCallback,
+                reinterpret_cast<void*>(static_cast<uintptr_t>(cbParam->fd)));
         napi_status callStatus = napi_call_function(cbParam->env, adapterObj, layoutWriteFunc,
             NapiPrintUtils::ARGC_FIVE, callbackValues, &callbackResult);
         if (callStatus != napi_ok) {
