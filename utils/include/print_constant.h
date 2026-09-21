@@ -361,6 +361,12 @@ enum WatermarkHandleResult {
     WATERMARK_HANDLE_FAILURE = 1,  // Processing failed
 };
 
+enum DiscoveryState {
+    DISCOVERY_IDLE = 0,
+    DISCOVERY_RUNNING = 1,
+    DISCOVERY_WAITING = 2,
+};
+
 inline const std::string PRINTER_DISCOVER_EVENT_TYPE = "printerDiscover";
 inline const std::string PRINTER_CHANGE_EVENT_TYPE = "printerChange";
 inline const std::string SHARED_HOST_DISCOVER_EVENT_TYPE = "sharedHostDiscover";
