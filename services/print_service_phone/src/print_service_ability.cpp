@@ -6046,6 +6046,8 @@ void PrintServiceAbility::HandleWebPrinterUninstall()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
+static const std::string PRINT_EXTENSION_SUFFIX = ":print";
+
 bool PrintServiceAbility::IsRemoteExtensionCaller()
 {
     int32_t callerPid = IPCSkeleton::GetCallingPid();
