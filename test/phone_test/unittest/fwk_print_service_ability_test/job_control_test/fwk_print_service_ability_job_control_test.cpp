@@ -347,6 +347,33 @@ HWTEST_F(PrintServiceAbilityTest, StartNativePrintJob_Is_JobId_Empty, TestSize.L
     EXPECT_EQ(ret, E_PRINT_NONE);
 }
 
+HWTEST_F(PrintServiceAbilityTest, StartNativePrintJob_DuplicateJobId_Rejected, TestSize.Level1)
+{
+    auto service = PrintServiceAbilityTest::CreateService();
+    service->ManualStart();
+    std::string printerId = "123";
+    PrintJob printJob;
+    Json::Value opsJson;
+    opsJson["key"] = "value";
+    printJob.SetPrinterId(printerId);
+    printJob.SetOption(PrintJsonUtil::WriteString(opsJson));
+    auto printer = std::make_shared<PrinterInfo>();
+    service->printSystemData_.addedPrinterMap_.Insert(printerId, printer);
+
+    printJob.SetJobId("dupBoth");
+    service->printJobList_["dupBoth"] = std::make_shared<PrintJob>();
+    service->queuedJobList_["dupBoth"] = std::make_shared<PrintJob>();
+    EXPECT_EQ(service->StartNativePrintJob(printJob), E_PRINT_INVALID_PARAMETER);
+
+    printJob.SetJobId("dupPrint");
+    service->printJobList_["dupPrint"] = std::make_shared<PrintJob>();
+    EXPECT_EQ(service->StartNativePrintJob(printJob), E_PRINT_INVALID_PARAMETER);
+
+    printJob.SetJobId("dupQueued");
+    service->queuedJobList_["dupQueued"] = std::make_shared<PrintJob>();
+    EXPECT_EQ(service->StartNativePrintJob(printJob), E_PRINT_INVALID_PARAMETER);
+}
+
 HWTEST_F(PrintServiceAbilityTest, PrintServiceAbilityTest_0083_NeedRename, TestSize.Level1)
 {
     auto service = PrintServiceAbilityTest::CreateService();
