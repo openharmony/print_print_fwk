@@ -210,6 +210,9 @@ static const int32_t JOB_BANNED_POLICY_CODE = 1021;
 static const std::string EMD_QUERY_VERSION = "version_12";
 static const std::string IPPOVERUSB_PREFIX = ":IPP-";
 static const std::string PRINTER_ID_USB_DELIMITER = "USB";
+#ifdef REMOTE_SERVICE_ENABLE
+static const std::string PRINT_EXTENSION_SUFFIX = ":print";
+#endif
 
 std::mutex PrintServiceAbility::instanceLock_;
 sptr<PrintServiceAbility> PrintServiceAbility::instance_;
@@ -3089,8 +3092,6 @@ void PrintServiceAbility::StopDiscoveryInternal()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
-static const std::string PRINT_EXTENSION_SUFFIX = ":print";
-
 bool PrintServiceAbility::IsRemoteExtensionCaller()
 {
     int32_t callerPid = IPCSkeleton::GetCallingPid();
