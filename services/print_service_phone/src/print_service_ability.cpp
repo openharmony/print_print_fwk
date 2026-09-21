@@ -200,6 +200,9 @@ static const int32_t JOB_BANNED_EVENTID = 0x02E000001;
 static const std::string JOB_BANNED_VERSION = "1.0";
 static const int32_t JOB_BANNED_POLICY_CODE = 1021;
 static const std::string EMD_QUERY_VERSION = "version_12";
+#ifdef REMOTE_SERVICE_ENABLE
+static const std::string PRINT_EXTENSION_SUFFIX = ":print";
+#endif
 
 std::mutex PrintServiceAbility::instanceLock_;
 sptr<PrintServiceAbility> PrintServiceAbility::instance_;
@@ -6046,8 +6049,6 @@ void PrintServiceAbility::HandleWebPrinterUninstall()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
-static const std::string PRINT_EXTENSION_SUFFIX = ":print";
-
 bool PrintServiceAbility::IsRemoteExtensionCaller()
 {
     int32_t callerPid = IPCSkeleton::GetCallingPid();
