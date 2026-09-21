@@ -99,6 +99,7 @@ bool EventListenerMgr::RegisterPrinterListener(const CallbackEventType &eventTyp
 
     auto callback =
         std::make_shared<PrinterEventCallback>(userId, pid, eventType, listener, GetDeathRecipient());
+    callback->SetListener(listener);
     registeredListeners_[userId][eventType].emplace_back(callback);
     counter_++;
     PRINT_HILOGI("RegisterPrinterListener type=%{public}d, counter=%{public}d, pid=%{public}d, userId=%{public}d",
@@ -138,6 +139,7 @@ bool EventListenerMgr::RegisterExtensionListener(
 
     auto callback =
         std::make_shared<ExtensionEventCallback>(userId, pid, eventType, listener, GetDeathRecipient());
+    callback->SetListener(listener);
     callback->SetExtensionId(extensionId);
     registeredListeners_[userId][eventType].emplace_back(callback);
     counter_++;
