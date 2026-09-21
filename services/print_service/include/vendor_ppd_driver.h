@@ -18,6 +18,9 @@
 
 #include <vector>
 #include <mutex>
+#include <atomic>
+#include <thread>
+#include <memory>
 #include "vendor_driver_base.h"
 #include "vendor_manager.h"
 
@@ -41,12 +44,15 @@ private:
     std::string QueryPpdName(const std::string &makeAndModel);
     void DiscoverBackendPrinters();
     bool TryConnectByPpdDriver(const PrinterInfo &printerInfo);
+    bool TryStartDiscovery();
+    bool ShouldContinueDiscovery();
 
 private:
     std::string connectingVendorGroup;
     std::shared_ptr<PrinterInfo> connectingPrinterInfo;
     std::mutex updateDiscoveryMutex_;
     std::map<std::string, bool> discoveredPrinters_;
+    std::atomic<int32_t> discoveryState_{DISCOVERY_IDLE};
 };
 }  // namespace Print
 }  // namespace OHOS

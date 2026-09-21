@@ -184,17 +184,17 @@ HWTEST_F(VendorPpdDriverTest, DiscoverBackendPrinters_ShouldWorkNormolly, TestSi
 HWTEST_F(VendorPpdDriverTest, StartAndStopDiscovery_ShouldWorkNormolly, TestSize.Level1)
 {
     MockVendorManager mock;
-    VendorPpdDriver vendorDriver;
-    EXPECT_TRUE(vendorDriver.Init(&mock));
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
+    EXPECT_TRUE(vendorDriver->Init(&mock));
     PrinterInfo info;
     info.SetPrinterId("test1");
     std::vector<PrinterInfo> infoVec = {info};
     EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
         .Times(1)
         .WillRepeatedly(DoAll(SetArgReferee<1>(infoVec), Return(E_PRINT_NONE)));
-    vendorDriver.OnStartDiscovery();
+    vendorDriver->OnStartDiscovery();
     std::this_thread::sleep_for(std::chrono::seconds(10));
-    vendorDriver.OnStopDiscovery();
+    vendorDriver->OnStopDiscovery();
 }
 
 /**
@@ -259,6 +259,75 @@ HWTEST_F(VendorPpdDriverTest, OnQueryCapabilityTest, TestSize.Level1)
 
     EXPECT_FALSE(vendorPpdDriver.OnQueryCapability("testId", 0));
     EXPECT_FALSE(vendorPpdDriver.OnQueryCapability("testId", 0));
+}
+
+/**
+ * @tc.name: OnStartDiscovery_ShouldRejectWhenAlreadyRunning
+ * @tc.desc: OnStartDiscovery should return early when discovery is already running.
+ * @tc.type: FUNC
+ */
+HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldRejectWhenAlreadyRunning, TestSize.Level1)
+{
+    MockVendorManager mock;
+    VendorPpdDriver vendorDriver;
+    EXPECT_TRUE(vendorDriver.Init(&mock));
+    vendorDriver.discoveryState_.store(DISCOVERY_WAITING);
+    EXPECT_CALL(mock, DiscoverBackendPrinters(_, _)).Times(0);
+    vendorDriver.OnStartDiscovery();
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_WAITING);
+    vendorDriver.OnStopDiscovery();
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_IDLE);
+}
+
+/**
+ * @tc.name: OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning
+ * @tc.desc: OnStopDiscovery should work normally when no discovery thread is running.
+ * @tc.type: FUNC
+ */
+HWTEST_F(VendorPpdDriverTest, OnStopDiscovery_ShouldWorkWhenNoDiscoveryRunning, TestSize.Level1)
+{
+    VendorPpdDriver vendorDriver;
+    vendorDriver.OnStopDiscovery();
+    EXPECT_EQ(vendorDriver.discoveryState_.load(), DISCOVERY_IDLE);
+}
+
+/**
+ * @tc.name: OnStartDiscovery_ShouldJoinPreviousThread_WhenCalledTwice
+ * @tc.desc: OnStartDiscovery should join previous discovery thread when called twice.
+ * @tc.type: FUNC
+ */
+HWTEST_F(VendorPpdDriverTest, OnStartDiscovery_ShouldJoinPreviousThread_WhenCalledTwice, TestSize.Level1)
+{
+    MockVendorManager mock;
+    auto vendorDriver = std::make_shared<VendorPpdDriver>();
+    EXPECT_TRUE(vendorDriver->Init(&mock));
+    EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
+        .Times(2)
+        .WillRepeatedly(Return(E_PRINT_NONE));
+    vendorDriver->OnStartDiscovery();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    vendorDriver->OnStartDiscovery();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    vendorDriver->OnStopDiscovery();
+    EXPECT_EQ(vendorDriver->discoveryState_.load(), DISCOVERY_IDLE);
+}
+
+/**
+ * @tc.name: DiscoverBackendPrinters_ShouldReturnWhenDiscoverFail
+ * @tc.desc: DiscoverBackendPrinters should return early when backend discovery fails.
+ * @tc.type: FUNC
+ */
+HWTEST_F(VendorPpdDriverTest, DiscoverBackendPrinters_ShouldReturnWhenDiscoverFail, TestSize.Level1)
+{
+    MockVendorManager mock;
+    VendorPpdDriver vendorDriver;
+    EXPECT_TRUE(vendorDriver.Init(&mock));
+    EXPECT_CALL(mock, DiscoverBackendPrinters(_, _))
+        .Times(1)
+        .WillRepeatedly(Return(E_PRINT_SERVER_FAILURE));
+    EXPECT_CALL(mock, AddPrinterToDiscovery(_, _)).Times(0);
+    EXPECT_CALL(mock, RemovePrinterFromDiscovery(_, _)).Times(0);
+    vendorDriver.DiscoverBackendPrinters();
 }
 }  // namespace Print
 }  // namespace OHOS
