@@ -25,6 +25,9 @@
 #include "print_log.h"
 
 namespace OHOS::Print {
+
+constexpr const char* PRINT_EXTENSION_SUFFIX = ":print";
+
 class PrintCounter {
 private:
     std::atomic<int> count_{0};
