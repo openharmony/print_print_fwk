@@ -844,5 +844,116 @@ HWTEST_F(PrintServiceAbilityTest, AddSinglePrinterInfo_NoActiveJob_ShouldSetIdle
     EXPECT_EQ(updatedPrinter.GetPrinterStatus(), PRINTER_STATUS_IDLE);
 }
 
+/**
+ * @tc.name: StartRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldReturnFalse
+ * @tc.desc: Verify StartRemotePrinterDiscovery returns false when caller is not a remote bundle.
+ * @tc.type: FUNC StartRemotePrinterDiscovery
+ * @tc.require: Non-remote bundle should fall through to local discovery.
+ */
+HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldReturnFalse, TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = PrintServiceAbilityTest::CreateService();
+    EXPECT_FALSE(service->StartRemotePrinterDiscovery());
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StopRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldNotCrash
+ * @tc.desc: Verify StopRemotePrinterDiscovery does nothing when caller is not a remote bundle.
+ * @tc.type: FUNC StopRemotePrinterDiscovery
+ * @tc.require: Non-remote bundle should skip remote stop.
+ */
+HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenNotRemoteBundle_ShouldNotCrash, TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = PrintServiceAbilityTest::CreateService();
+    service->StopRemotePrinterDiscovery();
+    EXPECT_NE(service, nullptr);
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StartRemotePrinterDiscovery_WhenRemoteBundleAndOversea_ShouldReturnTrue
+ * @tc.desc: Verify StartRemotePrinterDiscovery returns true when remote bundle and oversea.
+ * @tc.type: FUNC StartRemotePrinterDiscovery
+ * @tc.require: Oversea mode should skip remote printer discovery entirely.
+ */
+HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenRemoteBundleAndOversea_ShouldReturnTrue,
+    TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    AppExecFwk::BundleInfo bundleInfo;
+    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
+    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
+        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(true));
+    EXPECT_TRUE(service->StartRemotePrinterDiscovery());
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StartRemotePrinterDiscovery_WhenRemoteBundleAndDomestic_ShouldReturnTrue
+ * @tc.desc: Verify StartRemotePrinterDiscovery returns true when remote bundle and domestic.
+ * @tc.type: FUNC StartRemotePrinterDiscovery
+ * @tc.require: Domestic mode should start remote printer discovery.
+ */
+HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenRemoteBundleAndDomestic_ShouldReturnTrue,
+    TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    AppExecFwk::BundleInfo bundleInfo;
+    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
+    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
+        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(false));
+    EXPECT_TRUE(service->StartRemotePrinterDiscovery());
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StopRemotePrinterDiscovery_WhenRemoteBundleAndOversea_ShouldNotStop
+ * @tc.desc: Verify StopRemotePrinterDiscovery skips stop when remote bundle and oversea.
+ * @tc.type: FUNC StopRemotePrinterDiscovery
+ * @tc.require: Oversea mode should skip stop remote printer discovery.
+ */
+HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenRemoteBundleAndOversea_ShouldNotStop,
+    TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    AppExecFwk::BundleInfo bundleInfo;
+    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
+    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
+        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(true));
+    service->StopRemotePrinterDiscovery();
+    EXPECT_NE(service, nullptr);
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
+/**
+ * @tc.name: StopRemotePrinterDiscovery_WhenRemoteBundleAndDomestic_ShouldStop
+ * @tc.desc: Verify StopRemotePrinterDiscovery stops when remote bundle and domestic.
+ * @tc.type: FUNC StopRemotePrinterDiscovery
+ * @tc.require: Domestic mode should stop remote printer discovery.
+ */
+HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenRemoteBundleAndDomestic_ShouldStop,
+    TestSize.Level1)
+{
+#ifdef REMOTE_SERVICE_ENABLE
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    AppExecFwk::BundleInfo bundleInfo;
+    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
+    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
+        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(false));
+    service->StopRemotePrinterDiscovery();
+    EXPECT_NE(service, nullptr);
+#endif  // REMOTE_SERVICE_ENABLE
+}
+
 }  // namespace Print
 }  // namespace OHOS

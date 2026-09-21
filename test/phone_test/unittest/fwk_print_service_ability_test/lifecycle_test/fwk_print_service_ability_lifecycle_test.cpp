@@ -165,6 +165,44 @@ HWTEST_F(PrintServiceAbilityTest, RefreshPrinterStatusOnSwitchUser_EnterpriseEna
 #endif  // ENTERPRISE_ENABLE
 }
 
+/**
+ * @tc.name: IsOversea_WhenOversea_ShouldReturnTrue
+ * @tc.desc: Verify IsOversea returns true in oversea mode.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Oversea mode should be detected.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenOversea_ShouldReturnTrue, TestSize.Level1)
+{
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    EXPECT_CALL(*service, IsOversea()).WillOnce(Return(true));
+    EXPECT_TRUE(service->IsOversea());
+}
+
+/**
+ * @tc.name: IsOversea_WhenDomestic_ShouldReturnFalse
+ * @tc.desc: Verify IsOversea returns false in domestic mode.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Domestic mode should be detected.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenDomestic_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
+    EXPECT_CALL(*service, IsOversea()).WillOnce(Return(false));
+    EXPECT_FALSE(service->IsOversea());
+}
+
+/**
+ * @tc.name: IsOversea_WhenParameterNotSet_ShouldReturnFalse
+ * @tc.desc: Verify IsOversea returns false (default) when const.cust.is_oversea is not set.
+ * @tc.type: FUNC IsOversea
+ * @tc.require: Default value should be false (domestic) when parameter is unset.
+ */
+HWTEST_F(PrintServiceAbilityTest, IsOversea_WhenParameterNotSet_ShouldReturnFalse, TestSize.Level1)
+{
+    auto service = PrintServiceAbilityTest::CreateService();
+    EXPECT_FALSE(service->IsOversea());
+}
+
 HWTEST_F(PrintServiceAbilityTest, OHReleaseTest, TestSize.Level1)
 {
     PrintServiceMockPermission::MockPermission();

@@ -162,8 +162,7 @@ public:
     int32_t AddPrinter(const std::string &printerName, const std::string &uri,
         const std::string &ppdName, const std::string &options);
     void HandleWebPrinterUninstall();
-    bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
-    bool IsExtensionPrintJob(const std::string &cid);
+    virtual bool IsOversea();
 
 protected:
     void OnStart() override;
@@ -248,7 +247,7 @@ private:
     bool RemoveSinglePrinterInfo(const std::string &printerId);
     void HandlePrinterStateChangeRegister(const std::string &eventType);
     void HandlePrinterChangeRegister(const std::string &eventType);
-    bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
+    virtual bool GetBundleInfo(AppExecFwk::BundleInfo &bundleInfo);
     bool IsExtensionPrintJob(const std::string &cid);
 #ifdef HAVE_SMB_PRINTER
     void TryStartSmbPrinterStatusMonitor();
@@ -428,6 +427,8 @@ public:
     int32_t AddRemotePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool RemoveRemotePrinterInfo(const std::string &uri);
 private:
+    bool StartRemotePrinterDiscovery();
+    void StopRemotePrinterDiscovery();
     bool MatchPrinterByUri(const std::string &uri, std::string &matchedPrinterId, PrinterInfo &matchedPrinter);
     bool IsRemotePrinter(const std::string &printerId);
     int32_t ConnectRemotePrinter(const std::string &printerId);

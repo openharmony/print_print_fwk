@@ -93,6 +93,7 @@ static constexpr uint32_t ISO_A4_WIDTH = 8268;
 static constexpr uint32_t ISO_A4_HEIGHT = 11692;
 static const std::string IS_ENTERPRISE_ENABLE = "true";
 static const std::string ENTERPRISE_SPACE_PARAM = "persist.space_mgr_service.enterprise_space_enable";
+static const std::string OVERSEA_PARAM = "const.cust.is_oversea";
 static const std::string PRINT_QUERY_INFO_EVENT_TYPE = "printerInfoQuery";
 static const std::string CUPSD_CONTROL_PARAM = "print.cupsd.ready";
 static const std::string CUPSD_ENTERPRISE_CONTROL_PARAM = "print.cupsd_enterprise.ready";
@@ -110,6 +111,8 @@ public:
     MOCK_METHOD2(QueryPrinterInfoByPrinterId, int32_t(const std::string &printerId, PrinterInfo &info));
     MOCK_METHOD2(QueryPPDInformation, bool(const std::string &makeModel, std::string &ppdName));
     MOCK_METHOD0(GetCallerBundleName, std::string());
+    MOCK_METHOD0(IsOversea, bool());
+    MOCK_METHOD1(GetBundleInfo, bool(AppExecFwk::BundleInfo &));
     MOCK_METHOD5(DoAddPrinterToCupsEnable, bool(const std::string &printerUri, const std::string &printerName,
         std::shared_ptr<PrinterInfo> printerInfo, const std::string &ppdName, const std::string &ppdData));
     MOCK_METHOD1(IsPpdNameValid, bool(const std::string &ppdName));
