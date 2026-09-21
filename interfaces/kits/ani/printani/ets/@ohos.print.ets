@@ -648,11 +648,28 @@ export default namespace print {
         offCancel(callback?: Callback<void>): void;
     }
 
+    class PrintTaskCleaner {
+        private ptr: long = 0;
+
+        constructor(ptr: long) {
+            this.ptr = ptr;
+        }
+        native clean(): void;
+    }
+
+    let printTaskDestroyRegister: FinalizationRegistry<PrintTaskCleaner> =
+        new FinalizationRegistry<PrintTaskCleaner>((cleaner: PrintTaskCleaner): void => {
+            cleaner.clean();
+        });
+
     export class PrintTaskImpl implements PrintTask {
         private  nativeTask: long = 0;
+        private cleaner: PrintTaskCleaner | null = null;
         constructor(task: long) {
             if(this.nativeTask == 0) {
                 this.nativeTask = task;
+                this.cleaner = new PrintTaskCleaner(task);
+                printTaskDestroyRegister.register(this, this.cleaner!);
             }
         }
 
