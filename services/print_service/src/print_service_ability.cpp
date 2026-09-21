@@ -915,11 +915,7 @@ int32_t PrintServiceAbility::StartDiscoverPrinter(const std::vector<std::string>
     PRINT_HILOGI("Add discovery caller, pid: %{public}d, bundleName: %{public}s", callerPid, bundleName.c_str());
 
 #ifdef REMOTE_SERVICE_ENABLE
-    AppExecFwk::BundleInfo bundleInfo;
-    if (GetBundleInfo(bundleInfo) && bundleInfo.signatureInfo.appIdentifier == REMOTE_EXT_BUNDLE_ID) {
-        PRINT_HILOGI("Remote bundle detected, start printer discovery");
-        RemotePrinterManager::GetInstance().StartPrinterDiscovery();
-        PRINT_HILOGI("Remote discovery started, skip vendor and extension discovery");
+    if (StartRemotePrinterDiscovery()) {
         return E_PRINT_NONE;
     }
 #endif
@@ -3068,11 +3064,7 @@ void PrintServiceAbility::StopDiscoveryInternal()
     PRINT_HILOGI("StopDiscoveryInternal start.");
     vendorManager.StopDiscovery();
 #ifdef REMOTE_SERVICE_ENABLE
-    AppExecFwk::BundleInfo bundleInfo;
-    if (GetBundleInfo(bundleInfo) && bundleInfo.signatureInfo.appIdentifier == REMOTE_EXT_BUNDLE_ID) {
-        PRINT_HILOGI("Remote bundle detected, stop printer discovery");
-        RemotePrinterManager::GetInstance().StopPrinterDiscovery();
-    }
+    StopRemotePrinterDiscovery();
 #endif
     printSystemData_.ClearDiscoveredPrinterList();
     CallbackInfo cbInfo;
@@ -3097,6 +3089,39 @@ void PrintServiceAbility::StopDiscoveryInternal()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
+bool PrintServiceAbility::IsRemoteExtensionCaller()
+{
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    AppExecFwk::RunningProcessInfo processInfo;
+    if (!PrintCallerAppMonitor::GetInstance().GetRunningProcessInfoByPid(callerPid, processInfo)) {
+        PRINT_HILOGE("GetRunningProcessInfoByPid fail, callerPid: %{public}d", callerPid);
+        return false;
+    }
+    PRINT_HILOGI("IsRemoteExtensionCaller pid: %{public}d, processName: %{public}s",
+        callerPid, processInfo.processName_.c_str());
+    return processInfo.processName_ == std::string(REMOTE_EXT_BUNDLE_NAME) + PRINT_EXTENSION_SUFFIX;
+}
+
+bool PrintServiceAbility::StartRemotePrinterDiscovery()
+{
+    if (!IsRemoteExtensionCaller()) {
+        return false;
+    }
+    PRINT_HILOGI("Remote bundle detected, start printer discovery");
+    RemotePrinterManager::GetInstance().StartPrinterDiscovery();
+    PRINT_HILOGI("Remote discovery started, skip vendor and extension discovery");
+    return true;
+}
+
+void PrintServiceAbility::StopRemotePrinterDiscovery()
+{
+    if (!IsRemoteExtensionCaller()) {
+        return;
+    }
+    PRINT_HILOGI("Remote bundle detected, stop printer discovery");
+    RemotePrinterManager::GetInstance().StopPrinterDiscovery();
+}
+
 bool PrintServiceAbility::IsRemotePrinter(const std::string &printerId)
 {
     std::string extensionId = PrintUtils::GetExtensionId(printerId);

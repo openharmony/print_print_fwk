@@ -26,7 +26,6 @@
 
 namespace OHOS::Print {
 static constexpr uint32_t CHECK_CALLER_APP_INTERVAL = 60;
-static const std::string PRINT_EXTENSION_SUFFIX = ":print";
 
 PrintCallerAppMonitor& PrintCallerAppMonitor::GetInstance()
 {
