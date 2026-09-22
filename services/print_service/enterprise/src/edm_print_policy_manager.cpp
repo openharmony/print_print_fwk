@@ -129,7 +129,6 @@ bool EdmPrintPolicyManager::IsInIpWhitelist(const std::string &ip)
     if (!RetryQueryFromEdm()) {
         return false;
     }
-
     std::lock_guard<std::mutex> lock(mutex_);
     if (policy_.ipWhitelist.empty()) {
         PRINT_HILOGI("IP Whitelist is empty, allow by default");
