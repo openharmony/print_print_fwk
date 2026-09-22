@@ -92,7 +92,6 @@ static void NapiCallFunction(CallbackParam* cbParam, size_t argcCount, napi_valu
 
 struct WriteResultContext {
     uint32_t fd = INVALID_FD;
-    bool completed = false;
 
     void CloseOnce()
     {
@@ -114,14 +113,13 @@ static napi_value WriteResultCallback(napi_env env, napi_callback_info info)
 
     PRINT_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
     auto *context = static_cast<WriteResultContext *>(data);
-    if (context == nullptr || context->completed || context->fd == INVALID_FD) {
+    if (context == nullptr) {
         return nullptr;
     }
 
     std::string jobId = NapiPrintUtils::GetStringFromValueUtf8(env, args[0]);
     uint32_t replyState = NapiPrintUtils::GetUint32FromValue(env, args[1]);
 
-    context->completed = true;
     PrintManagerClient::GetInstance().AdapterGetFileCallBack(
         jobId, PRINT_JOB_CREATE_FILE_COMPLETED, replyState);
     context->CloseOnce();
