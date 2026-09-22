@@ -113,6 +113,9 @@ public:
     MOCK_METHOD0(GetCallerBundleName, std::string());
     MOCK_METHOD0(IsOversea, bool());
     MOCK_METHOD1(GetBundleInfo, bool(AppExecFwk::BundleInfo &));
+#ifdef REMOTE_SERVICE_ENABLE
+    MOCK_METHOD0(IsRemoteExtensionCaller, bool());
+#endif
     MOCK_METHOD5(DoAddPrinterToCupsEnable, bool(const std::string &printerUri, const std::string &printerName,
         std::shared_ptr<PrinterInfo> printerInfo, const std::string &ppdName, const std::string &ppdData));
     MOCK_METHOD1(IsPpdNameValid, bool(const std::string &ppdName));

@@ -500,6 +500,9 @@ private:
     bool MatchPrinterByUri(const std::string &uri, std::string &matchedPrinterId, PrinterInfo &matchedPrinter);
     bool IsRemotePrinter(const std::string &printerId);
     int32_t ConnectRemotePrinter(const std::string &printerId);
+    virtual bool IsRemoteExtensionCaller();
+    bool StartRemotePrinterDiscovery();
+    void StopRemotePrinterDiscovery();
 #endif // REMOTE_SERVICE_ENABLE
 };
 }  // namespace OHOS::Print

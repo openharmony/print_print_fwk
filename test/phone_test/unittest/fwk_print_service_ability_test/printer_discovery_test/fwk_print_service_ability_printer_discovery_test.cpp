@@ -884,10 +884,7 @@ HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenRemoteBundleAn
 {
 #ifdef REMOTE_SERVICE_ENABLE
     auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
-    AppExecFwk::BundleInfo bundleInfo;
-    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
-    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
-        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsRemoteExtensionCaller()).WillRepeatedly(Return(true));
     EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(true));
     EXPECT_TRUE(service->StartRemotePrinterDiscovery());
 #endif  // REMOTE_SERVICE_ENABLE
@@ -904,10 +901,7 @@ HWTEST_F(PrintServiceAbilityTest, StartRemotePrinterDiscovery_WhenRemoteBundleAn
 {
 #ifdef REMOTE_SERVICE_ENABLE
     auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
-    AppExecFwk::BundleInfo bundleInfo;
-    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
-    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
-        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsRemoteExtensionCaller()).WillRepeatedly(Return(true));
     EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(false));
     EXPECT_TRUE(service->StartRemotePrinterDiscovery());
 #endif  // REMOTE_SERVICE_ENABLE
@@ -924,10 +918,7 @@ HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenRemoteBundleAnd
 {
 #ifdef REMOTE_SERVICE_ENABLE
     auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
-    AppExecFwk::BundleInfo bundleInfo;
-    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
-    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
-        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsRemoteExtensionCaller()).WillRepeatedly(Return(true));
     EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(true));
     service->StopRemotePrinterDiscovery();
     EXPECT_NE(service, nullptr);
@@ -945,10 +936,7 @@ HWTEST_F(PrintServiceAbilityTest, StopRemotePrinterDiscovery_WhenRemoteBundleAnd
 {
 #ifdef REMOTE_SERVICE_ENABLE
     auto service = std::make_shared<MockPrintServiceAbility>(PRINT_SERVICE_ID, true);
-    AppExecFwk::BundleInfo bundleInfo;
-    bundleInfo.signatureInfo.appIdentifier = REMOTE_EXT_BUNDLE_ID;
-    EXPECT_CALL(*service, GetBundleInfo(_)).WillRepeatedly(
-        DoAll(SetArgReferee<0>(bundleInfo), Return(true)));
+    EXPECT_CALL(*service, IsRemoteExtensionCaller()).WillRepeatedly(Return(true));
     EXPECT_CALL(*service, IsOversea()).WillRepeatedly(Return(false));
     service->StopRemotePrinterDiscovery();
     EXPECT_NE(service, nullptr);
