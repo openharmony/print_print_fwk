@@ -16,7 +16,6 @@
 #include "print_cups_ppd.h"
 #include "print_service_converter.h"
 #include "print_log.h"
-#include "bundle_mgr_client.h"
 #include "print_utils.h"
 #include "print_cups_client.h"
 

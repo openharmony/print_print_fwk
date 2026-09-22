@@ -376,6 +376,9 @@ inline const std::string PRINTER_SERVICE_PRINTERS_PATH = "/data/service/el2/publ
 inline const std::string PRINTER_SERVICE_PRINTERS_ENTERPRISE_PATH =
     "/data/service/el2/public/print_service/printers_enterprise";
 inline const std::string PRINTER_SERVICE_IPP_RAW_DATA_PATH = "/data/service/el2/public/print_service/ipp_raw_data";
+inline const std::string PRINT_SERVICE_EL1_BASE_PATH = "/data/service/el1/";
+inline const std::string PRINT_SERVICE_DATA_SUBDIR = "/print_service/data/";
+inline const std::string PRINT_SHARED_DIR_OPTION_KEY = "print-shared-dir";
 constexpr int64_t IPP_RAW_DATA_EXPIRE_SECONDS = 604800; // 7 * 24 * 3600
 constexpr int DECIMAL_BASE = 10;
 inline const std::string PRINTER_LIST_FILE = "printer_list.json";
