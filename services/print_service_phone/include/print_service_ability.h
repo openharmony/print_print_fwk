@@ -427,6 +427,7 @@ public:
     int32_t AddRemotePrinterInfo(const PrinterInfo &info, const std::string &extensionId);
     bool RemoveRemotePrinterInfo(const std::string &uri);
 private:
+    virtual bool IsRemoteExtensionCaller();
     bool StartRemotePrinterDiscovery();
     void StopRemotePrinterDiscovery();
     bool MatchPrinterByUri(const std::string &uri, std::string &matchedPrinterId, PrinterInfo &matchedPrinter);

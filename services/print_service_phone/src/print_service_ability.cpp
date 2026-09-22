@@ -200,6 +200,7 @@ static const int32_t JOB_BANNED_EVENTID = 0x02E000001;
 static const std::string JOB_BANNED_VERSION = "1.0";
 static const int32_t JOB_BANNED_POLICY_CODE = 1021;
 static const std::string EMD_QUERY_VERSION = "version_12";
+static const std::string PRINT_EXTENSION_SUFFIX = ":print";
 
 std::mutex PrintServiceAbility::instanceLock_;
 sptr<PrintServiceAbility> PrintServiceAbility::instance_;
@@ -6046,10 +6047,22 @@ void PrintServiceAbility::HandleWebPrinterUninstall()
 }
 
 #ifdef REMOTE_SERVICE_ENABLE
+bool PrintServiceAbility::IsRemoteExtensionCaller()
+{
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    AppExecFwk::RunningProcessInfo processInfo;
+    if (!PrintCallerAppMonitor::GetInstance().GetRunningProcessInfoByPid(callerPid, processInfo)) {
+        PRINT_HILOGE("GetRunningProcessInfoByPid fail, callerPid: %{public}d", callerPid);
+        return false;
+    }
+    PRINT_HILOGI("IsRemoteExtensionCaller pid: %{public}d, processName: %{public}s",
+        callerPid, processInfo.processName_.c_str());
+    return processInfo.processName_ == std::string(REMOTE_EXT_BUNDLE_NAME) + PRINT_EXTENSION_SUFFIX;
+}
+
 bool PrintServiceAbility::StartRemotePrinterDiscovery()
 {
-    AppExecFwk::BundleInfo bundleInfo;
-    if (!GetBundleInfo(bundleInfo) || bundleInfo.signatureInfo.appIdentifier != REMOTE_EXT_BUNDLE_ID) {
+    if (!IsRemoteExtensionCaller()) {
         return false;
     }
     if (IsOversea()) {
@@ -6064,8 +6077,7 @@ bool PrintServiceAbility::StartRemotePrinterDiscovery()
 
 void PrintServiceAbility::StopRemotePrinterDiscovery()
 {
-    AppExecFwk::BundleInfo bundleInfo;
-    if (!GetBundleInfo(bundleInfo) || bundleInfo.signatureInfo.appIdentifier != REMOTE_EXT_BUNDLE_ID) {
+    if (!IsRemoteExtensionCaller()) {
         return;
     }
     if (IsOversea()) {
