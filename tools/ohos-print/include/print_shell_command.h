@@ -54,6 +54,7 @@ inline constexpr char ERR_INVALID_INPUT[] = "ERR_INVALID_INPUT";
 inline constexpr char ERR_ARG_MISSING[] = "ERR_ARG_MISSING";
 inline constexpr char ERR_COMMAND_TIMEOUT[] = "ERR_COMMAND_TIMEOUT";
 inline constexpr char ERR_SANDBOX_REQUIRED[] = "ERR_SANDBOX_REQUIRED";
+inline constexpr char ERR_VIRTUAL_PRINTER_NOT_SUPPORTED[] = "ERR_VIRTUAL_PRINTER_NOT_SUPPORTED";
 inline constexpr char INVALID_COMMAND[] = "INVALID_COMMAND";
 
 // --- Page size ID constants ---
@@ -278,6 +279,7 @@ private:
     int32_t ResolvePrinterId(std::string& printerId);
     int32_t ResolvePrinterUri(const std::string& printerId, std::string& printerUri);
     int32_t CheckPrinterStatus(const std::string& printerId, const std::string& printerStatusInput);
+    int32_t ResolvePrinter(PrintJobParams& params);
     void BuildOptionsJson(const PrintJobParams& params, const std::string& jobName,
                           uint32_t copyNumber, Json::Value& optionsJson);
     void SetPageSizeOnJob(const std::string& pageSizeId, PrintJob& printJob);
