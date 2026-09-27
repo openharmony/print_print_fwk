@@ -90,6 +90,20 @@ static void NapiCallFunction(CallbackParam* cbParam, size_t argcCount, napi_valu
     napi_close_handle_scope(cbParam->env, scope);
 }
 
+struct WriteResultContext {
+    uint32_t fd = INVALID_FD;
+
+    void CloseOnce()
+    {
+        CLOSE_FD_IF_VALID(fd);
+    }
+
+    ~WriteResultContext()
+    {
+        CloseOnce();
+    }
+};
+
 static napi_value WriteResultCallback(napi_env env, napi_callback_info info)
 {
     PRINT_HILOGI("parse from js callback data start");
@@ -98,9 +112,8 @@ static napi_value WriteResultCallback(napi_env env, napi_callback_info info)
     void *data = nullptr;
 
     PRINT_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
-    CallbackParam *cbParam = static_cast<CallbackParam*> (data);
-    if (cbParam == nullptr) {
-        PRINT_HILOGE("cbParam is nullptr.");
+    auto *context = static_cast<WriteResultContext *>(data);
+    if (context == nullptr) {
         return nullptr;
     }
 
@@ -109,9 +122,35 @@ static napi_value WriteResultCallback(napi_env env, napi_callback_info info)
 
     PrintManagerClient::GetInstance().AdapterGetFileCallBack(
         jobId, PRINT_JOB_CREATE_FILE_COMPLETED, replyState);
-    CLOSE_FD_IF_VALID(cbParam->fd);
+    context->CloseOnce();
     PRINT_HILOGI("from js return jobId:%{public}s, replyState:%{public}d", jobId.c_str(), replyState);
     return nullptr;
+}
+
+static napi_value CreateWriteResultCallback(CallbackParam *cbParam, WriteResultContext *&context)
+{
+    auto owner = std::make_unique<WriteResultContext>();
+    owner->fd = cbParam->fd;
+    cbParam->fd = INVALID_FD;
+
+    napi_value callback = nullptr;
+    napi_status status = napi_create_function(cbParam->env, "writeResultCallback", NAPI_AUTO_LENGTH,
+        WriteResultCallback, owner.get(), &callback);
+    if (status != napi_ok) {
+        PRINT_HILOGE("create write result callback failed");
+        return nullptr;
+    }
+    status = napi_add_finalizer(cbParam->env, callback, owner.get(),
+        [](napi_env, void *data, void *) {
+            delete static_cast<WriteResultContext *>(data);
+        }, nullptr, nullptr);
+    if (status != napi_ok) {
+        PRINT_HILOGE("add write result finalizer failed");
+        return nullptr;
+    }
+    // The JS function owns the context; failure cleanup only closes its FD.
+    context = owner.release();
+    return callback;
 }
 
 static void PrintAdapterWorkCb(CallbackParam *cbParam)
@@ -137,13 +176,17 @@ static void PrintAdapterWorkCb(CallbackParam *cbParam)
             PrintAttributesHelper::MakeJsObject(cbParam->env, cbParam->newAttrs);
         callbackValues[NapiPrintUtils::ARGC_THREE] =
             NapiPrintUtils::CreateUint32(cbParam->env, cbParam->fd);
-        callbackValues[NapiPrintUtils::ARGC_FOUR] =
-            NapiPrintUtils::CreateFunction(cbParam->env, "writeResultCallback", WriteResultCallback, cbParam);
+        WriteResultContext *context = nullptr;
+        callbackValues[NapiPrintUtils::ARGC_FOUR] = CreateWriteResultCallback(cbParam, context);
+        if (callbackValues[NapiPrintUtils::ARGC_FOUR] == nullptr) {
+            napi_close_handle_scope(cbParam->env, scope);
+            return;
+        }
         napi_status callStatus = napi_call_function(cbParam->env, adapterObj, layoutWriteFunc,
             NapiPrintUtils::ARGC_FIVE, callbackValues, &callbackResult);
         if (callStatus != napi_ok) {
             PRINT_HILOGE("napi_call_function failed");
-            CLOSE_FD_IF_VALID(cbParam->fd);
+            context->CloseOnce();
         }
     } else {
         CLOSE_FD_IF_VALID(cbParam->fd);
