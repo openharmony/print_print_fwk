@@ -1442,6 +1442,7 @@ int32_t PrintServiceAbility::StartNativePrintJob(PrintJob &printJob)
         return E_PRINT_SERVER_FAILURE;
     }
     nativePrintJob->SetOwnerPid(IPCSkeleton::GetCallingPid());
+    printJobList_.erase(jobId);
     UpdateQueuedJobList(jobId, nativePrintJob);
     auto printerId = nativePrintJob->GetPrinterId();
     printerJobMap_[printerId].insert(std::make_pair(jobId, true));
