@@ -4333,6 +4333,15 @@ int32_t PrintServiceAbility::UpdatePrinterInDiscovery(const PrinterInfo &printer
     PRINT_HILOGI("[Printer: %{public}s] UpdatePrinterInDiscovery start",
         PrintUtils::AnonymizePrinterName(printerInfo.GetPrinterName()).c_str());
     std::lock_guard<std::recursive_mutex> lock(apiMutex_);
+#ifdef EDM_PRINT_POLICY_ENABLE
+    if (!EdmPrintPolicyManager::GetInstance().IsPrinterAllowedEdm(printerInfo)) {
+        PRINT_HILOGI("UpdatePrinterInDiscovery blocked by EDM Policy");
+        ReportPrinterBlockedEvent(
+            PrintUtils::ExtractIpFromUri(printerInfo.HasUri() ? printerInfo.GetUri() : ""),
+            printerInfo.GetPrinterName());
+        return E_PRINT_EDM_POLICY_RESTRICTED;
+    }
+#endif
     std::string extensionId = DelayedSingleton<PrintBMSHelper>::GetInstance()->QueryCallerBundleName();
     PRINT_HILOGD("extensionId = %{public}s", extensionId.c_str());
     int32_t ret = E_PRINT_NONE;
