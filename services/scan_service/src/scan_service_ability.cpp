@@ -560,7 +560,8 @@ int32_t ScanServiceAbility::OpenScanner(const std::string scannerId)
     }
     ManualStart();
     std::lock_guard<std::recursive_mutex> autoLock(lock_);
-    SCAN_HILOGI("ScanServiceAbility OpenScanner start");
+    SCAN_HILOGI("ScanServiceAbility OpenScanner start, isEscl=%{public}d",
+        EsclDriverManager::IsEsclScanner(scannerId));
     if (scannerId.empty()) {
         SCAN_HILOGE("OpenScanner scannerId is empty");
         return E_SCAN_INVALID_PARAMETER;
@@ -1700,7 +1701,7 @@ bool ScanServiceAbility::PrepareBwScan(const std::string& scannerId)
             continue;
         }
         bool needBinarize = EsclDriverManager::IsEsclScanner(scannerId);
-        SCAN_HILOGD("PrepareBwScan: needBinarize=%{public}d", needBinarize);
+        SCAN_HILOGI("PrepareBwScan: needBinarize=%{public}d", needBinarize);
         return needBinarize;
     }
     return false;
