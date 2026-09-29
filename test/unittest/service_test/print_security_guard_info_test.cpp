@@ -17,6 +17,7 @@
 #include "print_security_guard_info.h"
 #include "print_constant.h"
 #include "print_log.h"
+#include "print_json_util.h"
 
 using namespace testing::ext;
 
@@ -365,6 +366,115 @@ HWTEST_F(PrintSecurityGuardInfoTest, PrintSecurityGuardInfoTest_ToJsonUrlDecode_
 
     std::string json = info.ToJsonStr();
     EXPECT_NE(json.find("report.pdf"), std::string::npos);
+}
+
+static int32_t ExtractPrintPages(PrintSecurityGuardInfo &info)
+{
+    Json::Value root;
+    if (!PrintJsonUtil::Parse(info.ToJsonStr(), root)) {
+        return -1;
+    }
+    Json::Value targetInfo;
+    if (!PrintJsonUtil::Parse(root["targetInfo"].asString(), targetInfo)) {
+        return -1;
+    }
+    return targetInfo["printPages"].asInt();
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_OptionPrintPages, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    printJob.SetOption(R"({"printPages":5})");
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 5);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_RangePages, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    PrintRange range;
+    range.SetPages({1, 3, 5});
+    printJob.SetPageRange(range);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 3);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_RangePagesEmpty_FallbackFdList, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    PrintRange range;
+    range.SetPages({});
+    printJob.SetPageRange(range);
+    std::vector<uint32_t> fdList = {1, 2};
+    printJob.SetFdList(fdList);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 2);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_RangeStartEnd, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    PrintRange range;
+    range.SetStartPage(3);
+    range.SetEndPage(8);
+    printJob.SetPageRange(range);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 6);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_RangeEndZero_FallbackFdList, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    PrintRange range;
+    range.SetStartPage(5);
+    range.SetEndPage(0);
+    printJob.SetPageRange(range);
+    std::vector<uint32_t> fdList = {1};
+    printJob.SetFdList(fdList);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 1);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_RangeEmpty_FdList, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    std::vector<uint32_t> fdList = {1, 2, 3};
+    printJob.SetFdList(fdList);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 3);
+}
+
+HWTEST_F(PrintSecurityGuardInfoTest, ResolvePrintPages_OptionPriorityOverRange, TestSize.Level1)
+{
+    std::vector<std::string> fileList;
+    PrintSecurityGuardInfo info("callPkg", fileList);
+    PrinterInfo printerInfo;
+    PrintJob printJob;
+    printJob.SetOption(R"({"printPages":7})");
+    PrintRange range;
+    range.SetStartPage(1);
+    range.SetEndPage(3);
+    printJob.SetPageRange(range);
+    info.SetPrintTypeInfo(printerInfo, printJob);
+    EXPECT_EQ(ExtractPrintPages(info), 7);
 }
 }  // namespace Print
 }  // namespace OHOS
