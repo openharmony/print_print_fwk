@@ -436,6 +436,7 @@ bool PrinterCapability::ReadVendorAbilityFromParcel(Parcel &parcel, PrinterCapab
 
 bool PrinterCapability::Marshalling(Parcel &parcel) const
 {
+    parcel.SetMaxCapacity(PRINT_PARCEL_MAX_CAPACITY);
     CHECK_PARCEL_OP_AND_RETURN_VAL(parcel.WriteUint32(GetColorMode()), false);
     CHECK_PARCEL_OP_AND_RETURN_VAL(parcel.WriteUint32(GetDuplexMode()), false);
     if (!MarshallingSupportedLists(parcel)) {
