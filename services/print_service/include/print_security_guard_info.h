@@ -56,7 +56,7 @@ public:
     const std::vector<std::string> &GetFileAuditInfo() const;
 
 private:
-    int32_t ResolvePrintPages(const PrintJob &printJob, const Json::Value &jobOptionJson, bool optionParsed);
+    int32_t ResolvePrintPages(const PrintJob &printJob, const Json::Value &jobOptionJson);
     int32_t subType_{};
     std::string caller_{};
     std::string objectInfo_{};

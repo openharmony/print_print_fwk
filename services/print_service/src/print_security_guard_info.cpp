@@ -60,10 +60,9 @@ void PrintSecurityGuardInfo::SetPrintTypeInfo(const PrinterInfo &printerInfo, co
     }
     printTypeInfo_.copyNumber = static_cast<int32_t>(printJob.GetCopyNumber());
     Json::Value jobOptionJson;
-    bool optionParsed = PrintJsonUtil::Parse(printJob.GetOption(), jobOptionJson);
-    printTypeInfo_.printPages = ResolvePrintPages(printJob, jobOptionJson, optionParsed);
-    if (optionParsed && PrintJsonUtil::IsMember(jobOptionJson, "jobName")
-        && jobOptionJson["jobName"].isString()) {
+    PrintJsonUtil::Parse(printJob.GetOption(), jobOptionJson);
+    printTypeInfo_.printPages = ResolvePrintPages(printJob, jobOptionJson);
+    if (PrintJsonUtil::IsMember(jobOptionJson, "jobName") && jobOptionJson["jobName"].isString()) {
         jobName_ = jobOptionJson["jobName"].asString();
     }
     uint32_t subState = printJob.GetSubState();
@@ -83,9 +82,9 @@ void PrintSecurityGuardInfo::SetPrintTypeInfo(const PrinterInfo &printerInfo, co
     }
 }
 
-static bool HasOptionPrintPages(const Json::Value &jobOptionJson, bool optionParsed)
+static bool HasOptionPrintPages(const Json::Value &jobOptionJson)
 {
-    return optionParsed && PrintJsonUtil::IsMember(jobOptionJson, "printPages")
+    return PrintJsonUtil::IsMember(jobOptionJson, "printPages")
         && jobOptionJson["printPages"].isInt();
 }
 
@@ -97,9 +96,9 @@ static bool IsValidPageRange(const PrintRange &pageRange)
 }
 
 int32_t PrintSecurityGuardInfo::ResolvePrintPages(const PrintJob &printJob,
-    const Json::Value &jobOptionJson, bool optionParsed)
+    const Json::Value &jobOptionJson)
 {
-    if (HasOptionPrintPages(jobOptionJson, optionParsed)) {
+    if (HasOptionPrintPages(jobOptionJson)) {
         int32_t pages = jobOptionJson["printPages"].asInt();
         PRINT_HILOGD("printPages from option:%{public}d", pages);
         return pages;
