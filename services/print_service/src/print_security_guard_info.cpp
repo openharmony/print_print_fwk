@@ -122,7 +122,7 @@ int32_t PrintSecurityGuardInfo::ResolvePrintPages(const PrintJob &printJob,
     std::vector<uint32_t> fdList;
     printJob.GetFdList(fdList);
     int32_t cnt = static_cast<int32_t>(fdList.size());
-    PRINT_HILOGD("printPages fallback fdList:%{public}d", cnt);
+    PRINT_HILOGI("printPages fallback fdList:%{public}d", cnt);
     return cnt;
 }
 
