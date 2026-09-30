@@ -23,6 +23,8 @@
 #undef protected
 #undef private
 #include "mock_application_context.h"
+#include "print_helper.h"
+#include "print_json_util.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -338,5 +340,22 @@ HWTEST_F(PrintJobHelperTest, SetOptionInPrintJob_004, TestSize.Level2)
  * DT SKIPPED: CreatePreview requires napi_env to trigger MakeJsObject nullptr path; no napi mock.
  */
 
+HWTEST_F(PrintJobHelperTest, ConvertNativeJobToPrintJob_AdvancedOptionsPrintPages, TestSize.Level1)
+{
+    Print_PrintJob nativeJob = {};
+    nativeJob.jobName = const_cast<char *>("test");
+    uint32_t fd = 1;
+    nativeJob.fdList = &fd;
+    nativeJob.fdListCount = 1;
+    nativeJob.copyNumber = 1;
+    nativeJob.printerId = const_cast<char *>("driver.raw.test");
+    nativeJob.advancedOptions = const_cast<char *>(R"({"printPages":5})");
+    PrintJob printJob;
+    EXPECT_EQ(ConvertNativeJobToPrintJob(nativeJob, printJob), E_PRINT_NONE);
+    Json::Value optionJson;
+    ASSERT_TRUE(PrintJsonUtil::Parse(printJob.GetOption(), optionJson));
+    ASSERT_TRUE(optionJson.isMember("printPages"));
+    EXPECT_EQ(optionJson["printPages"].asInt(), 5);
+}
 }  // namespace Print
 }  // namespace OHOS

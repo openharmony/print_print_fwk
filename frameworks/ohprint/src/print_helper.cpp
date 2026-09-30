@@ -758,6 +758,9 @@ void SetOptionInPrintJob(const Print_PrintJob &nativePrintJob, PrintJob &printJo
         if (jsonAdvanceOptions.isMember("isCollate") && jsonAdvanceOptions["isCollate"].isBool()) {
             jsonOptions["isCollate"] = jsonAdvanceOptions["isCollate"];
         }
+        if (jsonAdvanceOptions.isMember("printPages") && jsonAdvanceOptions["printPages"].isInt()) {
+            jsonOptions["printPages"] = jsonAdvanceOptions["printPages"];
+        }
         jsonOptions["cupsOptions"] = std::string(nativePrintJob.advancedOptions);
     }
 

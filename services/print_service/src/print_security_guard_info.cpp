@@ -60,18 +60,10 @@ void PrintSecurityGuardInfo::SetPrintTypeInfo(const PrinterInfo &printerInfo, co
     }
     printTypeInfo_.copyNumber = static_cast<int32_t>(printJob.GetCopyNumber());
     Json::Value jobOptionJson;
-    if (PrintJsonUtil::Parse(printJob.GetOption(), jobOptionJson)) {
-        if (PrintJsonUtil::IsMember(jobOptionJson, "printPages") && jobOptionJson["printPages"].isInt()) {
-            printTypeInfo_.printPages = jobOptionJson["printPages"].asInt();
-        } else {
-            std::vector<uint32_t> fdList;
-            printJob.GetFdList(fdList);
-            printTypeInfo_.printPages = (int32_t)fdList.size();
-        }
-
-        if (PrintJsonUtil::IsMember(jobOptionJson, "jobName") && jobOptionJson["jobName"].isString()) {
-            jobName_ = jobOptionJson["jobName"].asString();
-        }
+    PrintJsonUtil::Parse(printJob.GetOption(), jobOptionJson);
+    printTypeInfo_.printPages = ResolvePrintPages(printJob, jobOptionJson);
+    if (PrintJsonUtil::IsMember(jobOptionJson, "jobName") && jobOptionJson["jobName"].isString()) {
+        jobName_ = jobOptionJson["jobName"].asString();
     }
     uint32_t subState = printJob.GetSubState();
     switch (subState) {
@@ -88,6 +80,50 @@ void PrintSecurityGuardInfo::SetPrintTypeInfo(const PrinterInfo &printerInfo, co
             PRINT_HILOGD("PrintSecurityGuardInfo SetPrintTypeInfo unknown subState:%{public}u", subState);
             break;
     }
+}
+
+static bool HasOptionPrintPages(const Json::Value &jobOptionJson)
+{
+    return PrintJsonUtil::IsMember(jobOptionJson, "printPages")
+        && jobOptionJson["printPages"].isInt();
+}
+
+static bool IsValidPageRange(const PrintRange &pageRange)
+{
+    return pageRange.HasStartPage() && pageRange.HasEndPage() && pageRange.GetEndPage() != 0
+        && pageRange.GetEndPage() >= pageRange.GetStartPage()
+        && pageRange.GetEndPage() - pageRange.GetStartPage() <= 0x7FFFFFFE;
+}
+
+int32_t PrintSecurityGuardInfo::ResolvePrintPages(const PrintJob &printJob,
+    const Json::Value &jobOptionJson)
+{
+    if (HasOptionPrintPages(jobOptionJson)) {
+        int32_t pages = jobOptionJson["printPages"].asInt();
+        PRINT_HILOGD("printPages from option:%{public}d", pages);
+        return pages;
+    }
+    PrintRange pageRange;
+    printJob.GetPageRange(pageRange);
+    if (pageRange.HasPages()) {
+        std::vector<uint32_t> pages;
+        pageRange.GetPages(pages);
+        if (!pages.empty()) {
+            int32_t cnt = static_cast<int32_t>(pages.size());
+            PRINT_HILOGD("printPages from range.pages:%{public}d", cnt);
+            return cnt;
+        }
+    }
+    if (IsValidPageRange(pageRange)) {
+        int32_t cnt = static_cast<int32_t>(pageRange.GetEndPage() - pageRange.GetStartPage() + 1);
+        PRINT_HILOGD("printPages from range.startEnd:%{public}d", cnt);
+        return cnt;
+    }
+    std::vector<uint32_t> fdList;
+    printJob.GetFdList(fdList);
+    int32_t cnt = static_cast<int32_t>(fdList.size());
+    PRINT_HILOGI("printPages fallback fdList:%{public}d", cnt);
+    return cnt;
 }
 
 void PrintSecurityGuardInfo::SetPrintAuditInfo(
