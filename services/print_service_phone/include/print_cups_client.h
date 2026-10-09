@@ -56,6 +56,7 @@ struct JobParameters {
     Json::Value advancedOpsJson;
     bool isReverse = false;
     bool isCollate = true;
+    std::string printSharedDir;
 
     ~JobParameters()
     {
@@ -240,6 +241,7 @@ private:
     void UpdateJobParameterByOption(Json::Value& optionJson, JobParameters *params);
     void UpdateJobParameterByBoolOption(Json::Value& optionJson, JobParameters *params);
     JobParameters* BuildJobParameters(const PrintJob &jobInfo, const std::string &userName);
+    void FillPrintSharedDir(JobParameters *params);
     std::string GetColorString(uint32_t colorCode);
     std::string GetMedieSize(const PrintJob &jobInfo);
     std::string GetDulpexString(uint32_t duplexCode);
@@ -252,6 +254,7 @@ private:
     bool CancelPrinterJob(int cupsJobId);
     bool CancelPrinterJob(int cupsJobId, const std::string &name, const std::string &user);
     static int FillAdvancedOptions(JobParameters *jobParams, int num_options, cups_option_t **options);
+    static int FillSharedDirOption(JobParameters *jobParams, int num_options, cups_option_t **options);
     static std::string GetInputSlotFromAdvancedOps(const Json::Value &advancedOpsJson);
     const std::string& GetCurCupsRootDir();
     const std::string& GetCurCupsdControlParam();

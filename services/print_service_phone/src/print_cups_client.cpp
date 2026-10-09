@@ -47,6 +47,7 @@
 #include "print_service_converter.h"
 #include "print_cups_attribute.h"
 #include "print_cups_ppd.h"
+#include "bundle_mgr_client.h"
 #ifdef HAVE_SMB_PRINTER
 #include "smb_printer_state_monitor.h"
 #endif // HAVE_SMB_PRINTER
@@ -56,6 +57,48 @@
 
 namespace OHOS::Print {
 using namespace std;
+
+static bool IsDriverBundleInstalled(const std::string &bundleName, int32_t userId)
+{
+    if (bundleName.empty() || userId <= 0) {
+        return false;
+    }
+    AppExecFwk::BundleMgrClient bundleMgrClient;
+    AppExecFwk::BundleInfo bundleInfo;
+    if (!bundleMgrClient.GetBundleInfo(
+        bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO, bundleInfo, userId)) {
+        PRINT_HILOGE("GetBundleInfo failed for bundleName=%{public}s, userId=%{public}d", bundleName.c_str(), userId);
+        return false;
+    }
+    for (const auto &extInfo : bundleInfo.extensionInfos) {
+        if (extInfo.type == AppExecFwk::ExtensionAbilityType::DRIVER) {
+            PRINT_HILOGI("Verified driver bundle: %{public}s", bundleName.c_str());
+            return true;
+        }
+    }
+    PRINT_HILOGE("Bundle has no DRIVER extension: bundleName=%{public}s", bundleName.c_str());
+    return false;
+}
+
+static std::string ExtractAndVerifyDriverBundle(const std::string &ppdName, int32_t userId)
+{
+    if (ppdName.empty() || userId <= 0) {
+        return "";
+    }
+    size_t pos = ppdName.length();
+    while (pos > 0) {
+        pos = ppdName.rfind('_', pos - 1);
+        if (pos == std::string::npos) {
+            break;
+        }
+        std::string bundleName = ppdName.substr(0, pos);
+        if (IsDriverBundleInstalled(bundleName, userId)) {
+            return bundleName;
+        }
+    }
+    PRINT_HILOGW("No matching driver bundle for ppd: %{public}s", ppdName.c_str());
+    return "";
+}
 
 const uint32_t THOUSAND_INCH = 1000;
 const uint32_t TIME_OUT = 2000;
@@ -1254,7 +1297,21 @@ int PrintCupsClient::FillJobOptions(JobParameters *jobParams, int num_options, c
     }
     num_options = FillBorderlessOptions(jobParams, num_options, options);
     num_options = FillAdvancedOptions(jobParams, num_options, options);
+    num_options = FillSharedDirOption(jobParams, num_options, options);
     PRINT_HILOGI("FillJobOptions end.");
+    return num_options;
+}
+
+int PrintCupsClient::FillSharedDirOption(JobParameters *jobParams, int num_options, cups_option_t **options)
+{
+    if (jobParams == nullptr) {
+        PRINT_HILOGW("FillSharedDirOption jobParams is nullptr");
+        return num_options;
+    }
+    if (!jobParams->printSharedDir.empty()) {
+        num_options = cupsAddOption(
+            PRINT_SHARED_DIR_OPTION_KEY.c_str(), jobParams->printSharedDir.c_str(), num_options, options);
+    }
     return num_options;
 }
 
@@ -2511,6 +2568,35 @@ void PrintCupsClient::UpdateJobParameterByOption(Json::Value &optionJson, JobPar
     }
 }
 
+void PrintCupsClient::FillPrintSharedDir(JobParameters *params)
+{
+    if (params == nullptr) {
+        PRINT_HILOGW("FillPrintSharedDir params is nullptr");
+        return;
+    }
+    int32_t userId = PrintServiceAbility::GetInstance()->GetCurrentUserId();
+    if (userId <= 0) {
+        PRINT_HILOGE("Invalid userId: %{public}d", userId);
+        return;
+    }
+    std::string bundleName;
+    PrinterInfo printerInfo;
+    if (PrintServiceAbility::GetInstance()->QueryAddedPrinterInfoByPrinterId(params->printerId, printerInfo)) {
+        PpdInfo selectedDriverInfo;
+        printerInfo.GetSelectedDriver(selectedDriverInfo);
+        std::string ppdName = selectedDriverInfo.GetPpdName();
+        PRINT_HILOGI("ppdName = %{public}s, printerId = %{public}s", ppdName.c_str(), params->printerId.c_str());
+        bundleName = ExtractAndVerifyDriverBundle(ppdName, userId);
+    }
+    if (bundleName.empty()) {
+        PRINT_HILOGW("No matching driver bundle for ppd");
+        return;
+    }
+    params->printSharedDir =
+        PRINT_SERVICE_EL1_BASE_PATH + std::to_string(userId) + PRINT_SERVICE_DATA_SUBDIR + bundleName;
+    PRINT_HILOGD("Pass shared dir to cups: %{private}s", params->printSharedDir.c_str());
+}
+
 JobParameters *PrintCupsClient::BuildJobParameters(const PrintJob &jobInfo, const std::string &userName)
 {
     JobParameters *params = nullptr;
@@ -2547,6 +2633,7 @@ JobParameters *PrintCupsClient::BuildJobParameters(const PrintJob &jobInfo, cons
     params->isLandscape = jobInfo.GetIsLandscape();
     UpdateJobParameterByOption(optionJson, params);
     params->serviceAbility = PrintServiceAbility::GetInstance();
+    FillPrintSharedDir(params);
     return params;
 }
 
@@ -2576,6 +2663,7 @@ void PrintCupsClient::DumpJobParameters(JobParameters *jobParams)
     PRINT_HILOGI("jobParams->isCollate: %{public}d", jobParams->isCollate);
     PRINT_HILOGI(
         "jobParams->printerAttrsOptionCupsOption: %{public}s", jobParams->printerAttrsOptionCupsOption.c_str());
+    PRINT_HILOGD("jobParams->printSharedDir: %{private}s", jobParams->printSharedDir.c_str());
 }
 
 std::string PrintCupsClient::GetMedieSize(const PrintJob &jobInfo)

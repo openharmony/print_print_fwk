@@ -82,6 +82,41 @@ static const std::string PRINTER_PRINTER_NAME = "test_printer_name";
 static const std::string PRINTER_PRINTER_ID = "test_printer_id";
 static const std::string JOB_USER_NAME = "test_user";
 
+static const std::string TEST_SHARED_DIR = "/data/service/el1/100/print_service/data/com.vendor.driver";
+static const std::string TEST_PRINTER_ID = "test_shared_dir_printer";
+
+static PrintJob CreateSharedDirTestJob()
+{
+    PrintJob testJob;
+    testJob.SetJobId("0");
+    std::vector<uint32_t> files = {1};
+    testJob.SetFdList(files);
+    testJob.SetColorMode(1);
+    testJob.SetCopyNumber(1);
+    testJob.SetDuplexMode(0);
+    OHOS::Print::PrintPageSize pageSize;
+    pageSize.SetId("pgid-1234");
+    testJob.SetPageSize(pageSize);
+    testJob.SetPrinterId("printid-1234");
+    testJob.SetOption(JOB_OPTIONS);
+    return testJob;
+}
+
+static void AddTestPrinterWithPpd(const std::string &printerId, const std::string &ppdName)
+{
+    PrinterInfo printerInfo;
+    printerInfo.SetPrinterId(printerId);
+    PpdInfo ppdInfo;
+    ppdInfo.SetPpdName(ppdName);
+    printerInfo.SetSelectedDriver(ppdInfo);
+    PrintServiceAbility::GetInstance()->printSystemData_.GetAddedPrinterMap().Upsert(printerId, printerInfo);
+}
+
+static void RemoveTestPrinter(const std::string &printerId)
+{
+    PrintServiceAbility::GetInstance()->printSystemData_.GetAddedPrinterMap().Remove(printerId);
+}
+
 void AddUsbPrinter(PrinterInfo &info);
 
 class PrintCupsClientTest : public testing::Test {
@@ -4766,6 +4801,130 @@ HWTEST_F(PrintCupsClientTest, FillJobOptions_ExistingTextSmoothOption_NotOverwri
     EXPECT_STREQ(value, "enable");
     cupsFreeOptions(ret, options);
     delete jobParams;
+}
+
+/**
+ * @tc.name: FillPrintSharedDir_NullParams_NoCrash
+ * @tc.desc: FillPrintSharedDir with nullptr params does not crash
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillPrintSharedDir_NullParams_NoCrash, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    EXPECT_NO_FATAL_FAILURE(printCupsClient.FillPrintSharedDir(nullptr));
+}
+
+/**
+ * @tc.name: FillPrintSharedDir_NoPrinterAdded_PrintSharedDirEmpty
+ * @tc.desc: FillPrintSharedDir leaves printSharedDir empty when QueryAddedPrinterInfoByPrinterId returns false
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillPrintSharedDir_NoPrinterAdded_PrintSharedDirEmpty, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    JobParameters jobParams;
+    jobParams.printerId = "nonexistent_printer_id";
+    printCupsClient.FillPrintSharedDir(&jobParams);
+    EXPECT_TRUE(jobParams.printSharedDir.empty());
+}
+
+/**
+ * @tc.name: FillPrintSharedDir_PrinterAddedButDriverNotInstalled_PrintSharedDirEmpty
+ * @tc.desc: FillPrintSharedDir queries printer info successfully but driver bundle is not installed
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillPrintSharedDir_PrinterAddedButDriverNotInstalled_PrintSharedDirEmpty, TestSize.Level1)
+{
+    AddTestPrinterWithPpd(TEST_PRINTER_ID, "com.vendor.driver_TestPrinter.ppd");
+    OHOS::Print::PrintCupsClient printCupsClient;
+    JobParameters jobParams;
+    jobParams.printerId = TEST_PRINTER_ID;
+    printCupsClient.FillPrintSharedDir(&jobParams);
+    EXPECT_TRUE(jobParams.printSharedDir.empty());
+    RemoveTestPrinter(TEST_PRINTER_ID);
+}
+
+/**
+ * @tc.name: FillSharedDirOption_PrintSharedDirNotEmpty_AddsCupsOption
+ * @tc.desc: FillSharedDirOption adds print-shared-dir option when printSharedDir is not empty
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillSharedDirOption_PrintSharedDirNotEmpty_AddsCupsOption, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    JobParameters jobParams;
+    jobParams.printSharedDir = TEST_SHARED_DIR;
+    int numOptions = 0;
+    cups_option_t *options = nullptr;
+    int ret = printCupsClient.FillSharedDirOption(&jobParams, numOptions, &options);
+    EXPECT_EQ(ret, 1);
+    const char *value = cupsGetOption(PRINT_SHARED_DIR_OPTION_KEY.c_str(), ret, options);
+    EXPECT_NE(value, nullptr);
+    EXPECT_STREQ(value, TEST_SHARED_DIR.c_str());
+    cupsFreeOptions(ret, options);
+}
+
+/**
+ * @tc.name: FillSharedDirOption_PrintSharedDirEmpty_SkipsCupsOption
+ * @tc.desc: FillSharedDirOption skips print-shared-dir option when printSharedDir is empty
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillSharedDirOption_PrintSharedDirEmpty_SkipsCupsOption, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    JobParameters jobParams;
+    int numOptions = 0;
+    cups_option_t *options = nullptr;
+    int ret = printCupsClient.FillSharedDirOption(&jobParams, numOptions, &options);
+    EXPECT_EQ(ret, 0);
+    cupsFreeOptions(ret, options);
+}
+
+/**
+ * @tc.name: FillJobOptions_PrintSharedDirNotEmpty_AddsCupsOption
+ * @tc.desc: FillJobOptions adds print-shared-dir option when printSharedDir is not empty
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillJobOptions_PrintSharedDirNotEmpty_AddsCupsOption, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    std::unique_ptr<JobParameters> jobParams(
+        printCupsClient.BuildJobParameters(CreateSharedDirTestJob(), JOB_USER_NAME));
+    jobParams->printSharedDir = TEST_SHARED_DIR;
+    int numOptions = 0;
+    cups_option_t *options = nullptr;
+    int ret = printCupsClient.FillJobOptions(jobParams.get(), numOptions, &options);
+    EXPECT_GT(ret, 0);
+    const char *value = cupsGetOption(PRINT_SHARED_DIR_OPTION_KEY.c_str(), ret, options);
+    EXPECT_NE(value, nullptr);
+    EXPECT_STREQ(value, TEST_SHARED_DIR.c_str());
+    cupsFreeOptions(ret, options);
+}
+
+/**
+ * @tc.name: FillJobOptions_PrintSharedDirEmpty_SkipsCupsOption
+ * @tc.desc: FillJobOptions skips print-shared-dir option when printSharedDir is empty
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PrintCupsClientTest, FillJobOptions_PrintSharedDirEmpty_SkipsCupsOption, TestSize.Level1)
+{
+    OHOS::Print::PrintCupsClient printCupsClient;
+    std::unique_ptr<JobParameters> jobParams(
+        printCupsClient.BuildJobParameters(CreateSharedDirTestJob(), JOB_USER_NAME));
+    int numOptions = 0;
+    cups_option_t *options = nullptr;
+    int ret = printCupsClient.FillJobOptions(jobParams.get(), numOptions, &options);
+    EXPECT_GT(ret, 0);
+    const char *value = cupsGetOption(PRINT_SHARED_DIR_OPTION_KEY.c_str(), ret, options);
+    EXPECT_EQ(value, nullptr);
+    cupsFreeOptions(ret, options);
 }
 
 }  // namespace Print

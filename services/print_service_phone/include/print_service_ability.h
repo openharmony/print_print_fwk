@@ -136,6 +136,7 @@ public:
     int32_t StartSharedHostDiscovery() override;
     int32_t AuthSmbDevice(const PrintSharedHost& sharedHost, const std::string &userName, char *userPasswd,
         std::vector<PrinterInfo>& printerInfos) override;
+    int32_t GetCurrentUserId();
 
     int32_t RegisterWatermarkCallback(const sptr<IWatermarkCallback> &callback) override;
     int32_t UnregisterWatermarkCallback() override;
@@ -214,7 +215,6 @@ private:
     void ResetExtensionState(int32_t userId, const std::string& bundleName);
     bool StartPluginPrintExtAbility(const AAFwk::Want &want);
     bool IsPrinterJobMapEmpty();
-    int32_t GetCurrentUserId();
     std::string GetCallerUserName();
     void UpdatePrintUserMap();
     void AddToPrintJobList(std::string jobId, const std::shared_ptr<PrintJob> &printjob);

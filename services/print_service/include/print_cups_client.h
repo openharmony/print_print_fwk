@@ -60,6 +60,7 @@ struct JobParameters {
     bool isReverse = false;
     bool isCollate = true;
     std::string bsuniOutputFormat;
+    std::string printSharedDir;
 
     ~JobParameters()
     {
@@ -218,6 +219,7 @@ private:
     static int FillBasicOptions(JobParameters *jobParams, int num_options, cups_option_t **options);
     static int FillVendorOptions(JobParameters *jobParams, int num_options, cups_option_t **options);
     static int FillTextSmoothOption(int num_options, cups_option_t **options);
+    static int FillSharedDirOption(JobParameters *jobParams, int num_options, cups_option_t **options);
     static float ConvertInchTo100MM(float num);
     static void UpdatePrintJobStateInJobParams(JobParameters *jobParams, uint32_t state, uint32_t subState);
     static std::string GetIpAddress(unsigned int number);
@@ -249,8 +251,10 @@ private:
     void JobSentCallback();
 
     void UpdateJobParameterByOption(Json::Value& optionJson, JobParameters *params);
+    void UpdatePrintScaling(const PrintJob &jobInfo, JobParameters *params);
     void UpdateJobParameterByBoolOption(Json::Value& optionJson, JobParameters *params);
     JobParameters* BuildJobParameters(const PrintJob &jobInfo, const std::string &userName);
+    void FillPrintSharedDir(JobParameters *params);
     std::string GetColorString(uint32_t colorCode);
     std::string GetMedieSize(const PrintJob &jobInfo);
     std::string GetDulpexString(uint32_t duplexCode);
